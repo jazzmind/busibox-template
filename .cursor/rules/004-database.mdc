@@ -1,0 +1,94 @@
+---
+description: Use when working with Prisma database operations (APP_MODE=prisma only)
+globs: lib/prisma.ts,app/api/**/*.ts,prisma/**/*
+alwaysApply: false
+---
+
+# Database Patterns (Prisma Mode)
+
+## Context
+- Only applies when APP_MODE=prisma
+- Uses Prisma ORM for database operations
+- Multi-tenant architecture with organizationId
+
+## Requirements
+
+### Prisma Client
+
+```typescript
+// lib/prisma.ts
+import { PrismaClient } from '@prisma/client';
+
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+
+export const prisma = globalForPrisma.prisma || new PrismaClient();
+
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prisma;
+}
+```
+
+### Type Imports
+
+```typescript
+// ✅ Always use type keyword
+import type { User, Item } from '@prisma/client';
+
+// ❌ Never without type
+import { User } from '@prisma/client';
+```
+
+### Multi-Tenant Queries
+
+```typescript
+// ✅ Always filter by organizationId
+const items = await prisma.item.findMany({
+  where: { organizationId: session.organizationId },
+});
+
+// ✅ Include on create
+await prisma.item.create({
+  data: {
+    name: 'Item',
+    organizationId: session.organizationId,
+  },
+});
+```
+
+### Transactions
+
+```typescript
+await prisma.$transaction(async (tx) => {
+  await tx.item.create({ data: { ... } });
+  await tx.log.create({ data: { ... } });
+});
+```
+
+### Error Handling
+
+```typescript
+try {
+  await prisma.item.create({ data });
+} catch (error) {
+  if (error.code === 'P2002') {
+    // Unique constraint violation
+  }
+  throw error;
+}
+```
+
+## Schema Changes
+
+```bash
+# Development - push directly
+npm run db:push
+
+# Production - use migrations
+npx prisma migrate dev --name description
+```
+
+<critical>
+- NEVER access Prisma in frontend-only mode
+- ALWAYS filter by organizationId for tenant data
+- ALWAYS use type imports for Prisma types
+</critical>

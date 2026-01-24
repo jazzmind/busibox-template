@@ -1,0 +1,123 @@
+---
+description: Use when creating Next.js API routes
+globs: app/api/**/*.ts
+alwaysApply: false
+---
+
+# API Route Patterns
+
+## Context
+- Next.js 16 App Router API routes
+- Supports both frontend-only (proxy) and prisma modes
+
+## Requirements
+
+### Route Parameter Handling
+
+```typescript
+interface RouteParams {
+  params: Promise<{ id: string }>;
+}
+
+export async function GET(
+  request: NextRequest,
+  { params }: RouteParams
+) {
+  const { id } = await params;
+  // ...
+}
+```
+
+### Frontend-Only Mode (Proxy Pattern)
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server';
+import { requireAuthWithTokenExchange } from '@/lib/auth-middleware';
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL;
+
+export async function GET(request: NextRequest) {
+  const auth = await requireAuthWithTokenExchange(request);
+  if (auth instanceof NextResponse) return auth;
+
+  const response = await fetch(`${BACKEND_URL}/items`, {
+    headers: {
+      'Authorization': `Bearer ${auth.apiToken}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  return NextResponse.json(await response.json(), {
+    status: response.status,
+  });
+}
+```
+
+### Prisma Mode (Direct Access)
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { getSession } from '@/lib/auth';
+
+export async function GET(request: NextRequest) {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const items = await prisma.item.findMany({
+    where: { organizationId: session.organizationId },
+  });
+
+  return NextResponse.json(items);
+}
+```
+
+### Error Handling
+
+```typescript
+export async function GET(request: NextRequest) {
+  try {
+    // Route logic
+  } catch (error) {
+    console.error('[API] Error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+```
+
+## Examples
+
+<example>
+✅ Correct proxy route:
+```typescript
+export async function POST(request: NextRequest) {
+  const auth = await requireAuthWithTokenExchange(request);
+  if (auth instanceof NextResponse) return auth;
+
+  const body = await request.json();
+  const response = await fetch(`${BACKEND_URL}/items`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${auth.apiToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+
+  return NextResponse.json(await response.json(), {
+    status: response.status,
+  });
+}
+```
+</example>
+
+<critical>
+- ALWAYS authenticate requests
+- ALWAYS await params before use
+- NEVER mix proxy and prisma patterns in same route
+</critical>

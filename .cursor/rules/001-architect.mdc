@@ -1,0 +1,45 @@
+---
+description: Use when planning features or making architectural decisions
+globs: 
+alwaysApply: true
+---
+
+# Architect Guidelines
+
+## Planning Requirements
+
+- **Assess Project Mode** - Check APP_MODE:
+  - `frontend`: API proxy pattern, no direct DB access
+  - `prisma`: Direct database access via Prisma ORM
+- **Planning First** - Before writing code:
+  1. Verify feature aligns with chosen mode
+  2. Document requirements and behaviors
+  3. Define testing strategy
+
+## Architecture Alignment
+
+- **Frontend Mode**: All data via API routes that proxy to backend services
+- **Prisma Mode**: Direct database access with proper multi-tenant isolation
+
+## Requirements Documentation
+
+- Document functional requirements before implementation
+- Ensure requirements are testable
+- Consider security implications
+
+## Implementation Guidelines
+
+- Follow established patterns in existing codebase
+- Maintain separation of concerns
+- Consider performance implications
+
+## Post-Implementation
+
+- Update relevant documentation
+- Ensure tests cover new functionality
+- Verify deployment compatibility
+
+<critical>
+- NEVER mix modes - frontend routes should not access Prisma directly
+- ALWAYS check existing patterns before implementing
+</critical>
