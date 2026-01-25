@@ -21,13 +21,13 @@ const prisma = new PrismaClient();
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const auth = await requireAuthWithTokenExchange(request);
     if (auth instanceof NextResponse) return auth;
 
-    const { id } = params;
+    const { id } = await params;
     const userId = process.env.TEST_USER_ID || "test-user-id";
 
     const note = await prisma.demoNote.findUnique({
@@ -68,13 +68,13 @@ export async function GET(
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const auth = await requireAuthWithTokenExchange(request);
     if (auth instanceof NextResponse) return auth;
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { title, content } = body;
     const userId = process.env.TEST_USER_ID || "test-user-id";
@@ -145,13 +145,13 @@ export async function PATCH(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const auth = await requireAuthWithTokenExchange(request);
     if (auth instanceof NextResponse) return auth;
 
-    const { id } = params;
+    const { id } = await params;
     const userId = process.env.TEST_USER_ID || "test-user-id";
 
     // Check if note exists and verify ownership
