@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function HomePage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -32,12 +34,12 @@ export default function HomePage() {
             downstream services
           </li>
         </ul>
-        <a
+        <Link
           href="/demo"
           className="inline-block px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
         >
           Try Demo Features →
-        </a>
+        </Link>
         <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
           ⚠️ Remember to delete all demo features before building your production
           app. See{" "}

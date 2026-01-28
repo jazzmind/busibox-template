@@ -157,16 +157,22 @@ function DatabaseCRUDDemo() {
   const [newContent, setNewContent] = useState("");
   const [creating, setCreating] = useState(false);
 
+  // Get basePath for API calls
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+
   // Load notes on mount
   useEffect(() => {
     loadNotes();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadNotes = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch("/api/demo/notes");
+      const response = await fetch(`${basePath}/api/demo/notes`, {
+        credentials: "include",
+      });
       if (!response.ok) throw new Error("Failed to fetch notes");
       const data = await response.json();
       setNotes(data.notes || []);
@@ -183,10 +189,11 @@ function DatabaseCRUDDemo() {
     try {
       setCreating(true);
       setError(null);
-      const response = await fetch("/api/demo/notes", {
+      const response = await fetch(`${basePath}/api/demo/notes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: newTitle, content: newContent }),
+        credentials: "include",
       });
 
       if (!response.ok) throw new Error("Failed to create note");
@@ -216,10 +223,11 @@ function DatabaseCRUDDemo() {
   const saveEdit = async (id: string) => {
     try {
       setError(null);
-      const response = await fetch(`/api/demo/notes/${id}`, {
+      const response = await fetch(`${basePath}/api/demo/notes/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: editTitle, content: editContent }),
+        credentials: "include",
       });
 
       if (!response.ok) throw new Error("Failed to update note");
@@ -236,8 +244,9 @@ function DatabaseCRUDDemo() {
 
     try {
       setError(null);
-      const response = await fetch(`/api/demo/notes/${id}`, {
+      const response = await fetch(`${basePath}/api/demo/notes/${id}`, {
         method: "DELETE",
+        credentials: "include",
       });
 
       if (!response.ok) throw new Error("Failed to delete note");
@@ -395,16 +404,22 @@ function AgentAPIDemo() {
   const [response, setResponse] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Get basePath for API calls
+  const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+
   const callAgent = async () => {
     try {
       setLoading(true);
       setError(null);
       setResponse(null);
 
-      const res = await fetch("/api/demo/agent", {
+      // Use basePath-aware URL for fetch
+      const apiUrl = `${basePath}/api/demo/agent`;
+      const res = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message }),
+        credentials: "include", // Include cookies for auth
       });
 
       const data = await res.json();
@@ -470,42 +485,56 @@ function AgentAPIDemo() {
             <div className="flex items-center gap-2 mb-3">
               <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
               <h3 className="text-sm font-medium text-green-800 dark:text-green-300">
-                Success!
+                Success! ({response.duration}ms)
               </h3>
             </div>
-            <div className="space-y-2 text-sm">
-              <div>
-                <span className="font-medium text-gray-700 dark:text-gray-300">
-                  Message:
-                </span>{" "}
+            <div className="space-y-3 text-sm">
+              {/* User message */}
+              <div className="bg-blue-100 dark:bg-blue-900/30 rounded p-3">
+                <span className="font-medium text-blue-800 dark:text-blue-300 block mb-1">
+                  You:
+                </span>
                 <span className="text-gray-900 dark:text-white">
-                  {response.message}
+                  {response.userMessage || message}
                 </span>
               </div>
-              <div>
-                <span className="font-medium text-gray-700 dark:text-gray-300">
-                  Duration:
-                </span>{" "}
-                <span className="text-gray-900 dark:text-white">
-                  {response.duration}ms
+              
+              {/* Agent response */}
+              <div className="bg-gray-100 dark:bg-gray-800 rounded p-3">
+                <span className="font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                  Agent:
+                </span>
+                <span className="text-gray-900 dark:text-white whitespace-pre-wrap">
+                  {typeof response.agentResponse === 'string' 
+                    ? response.agentResponse 
+                    : JSON.stringify(response.agentResponse, null, 2)}
                 </span>
               </div>
-              <div>
-                <span className="font-medium text-gray-700 dark:text-gray-300">
-                  Agent API URL:
-                </span>{" "}
-                <span className="text-gray-900 dark:text-white font-mono text-xs">
-                  {response.agentApiUrl}
-                </span>
-              </div>
-              <div>
-                <span className="font-medium text-gray-700 dark:text-gray-300">
-                  Agent Response:
-                </span>
-                <pre className="mt-2 bg-gray-900 dark:bg-black text-gray-100 p-3 rounded text-xs overflow-x-auto">
-                  {JSON.stringify(response.agentResponse, null, 2)}
-                </pre>
-              </div>
+              
+              {/* Technical details (collapsed) */}
+              <details className="text-xs">
+                <summary className="cursor-pointer text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+                  Technical Details
+                </summary>
+                <div className="mt-2 space-y-2">
+                  <div>
+                    <span className="font-medium text-gray-600 dark:text-gray-400">
+                      API URL:
+                    </span>{" "}
+                    <span className="font-mono">
+                      {response.agentApiUrl}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-600 dark:text-gray-400">
+                      Raw Response:
+                    </span>
+                    <pre className="mt-1 bg-gray-900 dark:bg-black text-gray-100 p-2 rounded overflow-x-auto">
+                      {JSON.stringify(response.rawResponse, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              </details>
             </div>
           </div>
         )}

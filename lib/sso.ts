@@ -38,6 +38,9 @@ export interface AppTokenPayload {
   scope: string; // Space-separated scopes
   roles: Array<{ id: string; name: string }>; // User's roles
   app_id?: string; // App resource ID (UUID)
+  email?: string; // User's email (may be present in session tokens)
+  preferred_username?: string; // Alternative email field
+  name?: string; // User's display name
 }
 
 export interface SSOValidationResult {
@@ -117,11 +120,26 @@ export async function validateSSOToken(
 
     const appToken = payload as unknown as AppTokenPayload;
 
+    // Extract email from various possible claims
+    // Session tokens include 'email', access tokens may not
+    const email = appToken.email || 
+                  appToken.preferred_username || 
+                  appToken.name ||
+                  ''; // Empty if not found
+
+    console.log('[SSO] Token claims:', {
+      sub: appToken.sub,
+      email: appToken.email,
+      preferred_username: appToken.preferred_username,
+      name: appToken.name,
+      roles: appToken.roles?.map((r) => r.name),
+    });
+
     // Token is valid - extract user info
     return {
       valid: true,
       userId: appToken.sub,
-      email: "", // Email not included in access tokens - get from session if needed
+      email,
       roles: appToken.roles?.map((r) => r.name) || [],
       appId: appToken.app_id,
       scopes: appToken.scope?.split(" ").filter(Boolean) || [],

@@ -6,6 +6,9 @@ import { validateSSOToken, createSessionFromSSO } from "@/lib/sso";
  *
  * Handles SSO redirects from AI Portal.
  * Validates the token and sets up the session.
+ * 
+ * IMPORTANT: Only sets app-specific cookies, NOT busibox-session.
+ * The busibox-session is managed by AI Portal at the domain level.
  */
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -39,24 +42,28 @@ export async function GET(request: NextRequest) {
 
     const response = NextResponse.redirect(new URL(redirectUrl, request.url));
 
-    // Set session cookie
+    // Set app-specific session cookie with extracted user info
     const appName = process.env.APP_NAME || "app";
     response.cookies.set(`${appName}-session`, JSON.stringify(session), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 60 * 60 * 24, // 24 hours
-      path: "/",
+      path: basePath || "/",
     });
 
-    // Also set the busibox-session cookie with the token for subsequent requests
-    response.cookies.set("busibox-session", token, {
+    // Set auth_token cookie (what getTokenFromRequest looks for)
+    // Scoped to this app's path to avoid conflicts with other apps
+    response.cookies.set("auth_token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 24, // 24 hours
-      path: "/",
+      maxAge: 60 * 60 * 6, // 6 hours
+      path: basePath || "/",
     });
+
+    // NOTE: Do NOT set busibox-session here - that's the portal's domain-wide
+    // session cookie and should not be overwritten by individual apps.
 
     return response;
   } catch (error) {
@@ -69,6 +76,8 @@ export async function GET(request: NextRequest) {
 
 /**
  * SSO POST handler for token-based auth
+ * 
+ * IMPORTANT: Only sets app-specific cookies, NOT busibox-session.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -105,23 +114,30 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Set session cookies
+    // Get basePath for cookie scoping
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "/";
+
+    // Set app-specific session cookies
     const appName = process.env.APP_NAME || "app";
     response.cookies.set(`${appName}-session`, JSON.stringify(session), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 60 * 60 * 24,
-      path: "/",
+      path: basePath,
     });
 
-    response.cookies.set("busibox-session", token, {
+    // Set auth_token cookie - scoped to this app's path
+    response.cookies.set("auth_token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 24,
-      path: "/",
+      maxAge: 60 * 60 * 6,
+      path: basePath,
     });
+
+    // NOTE: Do NOT set busibox-session here - that's the portal's domain-wide
+    // session cookie and should not be overwritten by individual apps.
 
     return response;
   } catch (error) {
