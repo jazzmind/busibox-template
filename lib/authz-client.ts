@@ -38,7 +38,7 @@ function getAuthzBaseUrl(): string {
  * No client credentials required - the session JWT cryptographically proves user identity.
  *
  * @param sessionJwt - The session JWT from busibox-session cookie
- * @param audience - The target service (e.g., 'agent-api', 'ingest-api')
+ * @param audience - The target service (e.g., 'agent-api', 'data-api')
  * @param scopes - Optional scopes to request
  * @returns Authz token response
  */

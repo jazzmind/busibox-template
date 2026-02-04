@@ -26,6 +26,9 @@ interface DemoNote {
 
 export default function DemoPage() {
   const { authState } = useAuth();
+  // During initial render (and during Next.js prerender), authState can be null.
+  // Avoid hard crashes by treating "null" as unauthenticated.
+  const safeAuthState = authState ?? { isAuthenticated: false, user: null };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -53,7 +56,7 @@ export default function DemoPage() {
       </h1>
 
       {/* Section 1: Authentication Info */}
-      <AuthenticationDemo authState={authState} />
+      <AuthenticationDemo authState={safeAuthState} />
 
       {/* Section 2: Database CRUD Demo */}
       <DatabaseCRUDDemo />
@@ -69,6 +72,9 @@ export default function DemoPage() {
 // ============================================================================
 
 function AuthenticationDemo({ authState }: { authState: any }) {
+  const isAuthenticated = Boolean(authState?.isAuthenticated);
+  const user = authState?.user ?? null;
+
   return (
     <section className="mb-12 bg-white dark:bg-gray-800 rounded-lg shadow p-6">
       <div className="flex items-center justify-between mb-4">
@@ -91,23 +97,23 @@ function AuthenticationDemo({ authState }: { authState: any }) {
           </span>
           <span
             className={`px-2 py-1 rounded text-sm font-medium ${
-              authState.isAuthenticated
+              isAuthenticated
                 ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
                 : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
             }`}
           >
-            {authState.isAuthenticated ? "Authenticated" : "Not Authenticated"}
+            {isAuthenticated ? "Authenticated" : "Not Authenticated"}
           </span>
         </div>
 
-        {authState.isAuthenticated && authState.user && (
+        {isAuthenticated && user && (
           <>
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Email:
               </span>
               <span className="text-sm text-gray-900 dark:text-white">
-                {authState.user.email}
+                {user.email}
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -115,7 +121,7 @@ function AuthenticationDemo({ authState }: { authState: any }) {
                 User ID:
               </span>
               <span className="text-sm text-gray-900 dark:text-white font-mono">
-                {authState.user.id}
+                {user.id}
               </span>
             </div>
             <div className="flex items-center justify-between">
@@ -123,13 +129,13 @@ function AuthenticationDemo({ authState }: { authState: any }) {
                 Roles:
               </span>
               <span className="text-sm text-gray-900 dark:text-white">
-                {authState.user.roles?.join(", ") || "None"}
+                {user.roles?.join(", ") || "None"}
               </span>
             </div>
           </>
         )}
 
-        {!authState.isAuthenticated && (
+        {!isAuthenticated && (
           <p className="text-sm text-gray-600 dark:text-gray-400">
             Please authenticate through the AI Portal to see your user
             information.

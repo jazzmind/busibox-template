@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const outputMode = process.env.BUSIBOX_NEXT_OUTPUT;
+
 const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
@@ -18,8 +20,10 @@ const nextConfig: NextConfig = {
   // Transpile busibox-app (handles symlinked package)
   transpilePackages: ["@jazzmind/busibox-app"],
 
-  // Standalone output for container deployment
-  output: "standalone",
+  // Default to "standard" output since Busibox deploys full source + node_modules
+  // into the container. Keep standalone as an opt-in for projects that want it:
+  //   BUSIBOX_NEXT_OUTPUT=standalone npm run build
+  ...(outputMode === "standalone" ? { output: "standalone" } : {}),
 };
 
 export default nextConfig;

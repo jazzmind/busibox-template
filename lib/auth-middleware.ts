@@ -13,7 +13,7 @@ import { getApiToken } from "./authz-client";
 
 // Default audience for API calls - override in your app
 const DEFAULT_AUDIENCE = (process.env.DEFAULT_API_AUDIENCE ||
-  "backend-api") as "agent-api" | "ingest-api" | "search-api";
+  "backend-api") as "agent-api" | "data-api" | "search-api";
 
 export interface AuthenticatedRequest {
   ssoToken: string | null;
@@ -37,7 +37,7 @@ export interface AuthenticatedRequest {
  */
 export async function requireAuthWithTokenExchange(
   request: NextRequest,
-  audience?: "agent-api" | "ingest-api" | "search-api",
+  audience?: "agent-api" | "data-api" | "search-api",
   scopes?: string[]
 ): Promise<AuthenticatedRequest | NextResponse> {
   try {
@@ -111,7 +111,7 @@ export async function requireAuthWithTokenExchange(
  */
 export async function optionalAuth(
   request: NextRequest,
-  audience?: "agent-api" | "ingest-api" | "search-api",
+  audience?: "agent-api" | "data-api" | "search-api",
   scopes?: string[]
 ): Promise<AuthenticatedRequest | null> {
   try {
