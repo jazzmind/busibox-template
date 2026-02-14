@@ -65,6 +65,19 @@ export interface OrganizationEntity extends BaseEntity {
 }
 
 // ==========================================================================
+// Data API Demo Types
+// ==========================================================================
+
+export interface DemoItem {
+  id: string;
+  name: string;
+  description?: string;
+  category?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ==========================================================================
 // Utility Types
 // ==========================================================================
 
