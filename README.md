@@ -42,7 +42,7 @@ nano .env.local
 Key settings to update:
 - `APP_NAME` - Your app name
 - `APP_MODE` - `frontend` or `prisma`
-- `NEXT_PUBLIC_AI_PORTAL_URL` - AI Portal URL
+- `NEXT_PUBLIC_BUSIBOX_PORTAL_URL` - Busibox Portal URL
 - `AUTHZ_BASE_URL` - AuthZ service URL
 
 ### 3. Start Development

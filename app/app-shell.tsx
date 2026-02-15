@@ -10,9 +10,9 @@ function AppShellContent({ children, basePath }: { children: React.ReactNode; ba
   const { isReady, refreshKey, authState, redirectToPortal, logout } = useAuth();
   const [session, setSession] = useState<SessionData>({ user: null, isAuthenticated: false });
   
-  // Portal URL - must be configured via NEXT_PUBLIC_AI_PORTAL_URL
+  // Portal URL - must be configured via NEXT_PUBLIC_BUSIBOX_PORTAL_URL
   // Empty string disables portal links
-  const portalUrl = process.env.NEXT_PUBLIC_AI_PORTAL_URL || '';
+  const portalUrl = process.env.NEXT_PUBLIC_BUSIBOX_PORTAL_URL || '';
   
   // App home link - use "/" since Next.js Link automatically prepends basePath
   // The basePath is configured in next.config.ts
@@ -93,7 +93,7 @@ function AppShellContent({ children, basePath }: { children: React.ReactNode; ba
         session={session}
         onLogout={onLogout}
         portalUrl={portalUrl}
-        accountLink={`${process.env.NEXT_PUBLIC_AI_PORTAL_URL || ''}/account`}
+        accountLink={`${process.env.NEXT_PUBLIC_BUSIBOX_PORTAL_URL || ''}/account`}
         appHomeLink={appHomeLink}
         appName="My App"
         adminNavigation={[]}
@@ -119,7 +119,7 @@ function AppShellContent({ children, basePath }: { children: React.ReactNode; ba
 }
 
 export function AppShell({ children, basePath }: { children: React.ReactNode; basePath: string }) {
-  const portalUrl = process.env.NEXT_PUBLIC_AI_PORTAL_URL || '';
+  const portalUrl = process.env.NEXT_PUBLIC_BUSIBOX_PORTAL_URL || '';
   const appId = process.env.APP_NAME || 'busibox-template';
   
   return (

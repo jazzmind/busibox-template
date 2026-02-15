@@ -261,10 +261,8 @@ NEXT_PUBLIC_BASE_PATH=          # e.g., /myapp for nginx proxy
 NEXT_PUBLIC_APP_URL=http://localhost:3002
 
 # Authentication
-NEXT_PUBLIC_AI_PORTAL_URL=http://localhost:3000
+NEXT_PUBLIC_BUSIBOX_PORTAL_URL=http://localhost:3000
 AUTHZ_BASE_URL=http://localhost:8010
-AUTHZ_CLIENT_ID=my-app
-AUTHZ_CLIENT_SECRET=secret
 APP_NAME=My App                 # For token audience validation
 ```
 
