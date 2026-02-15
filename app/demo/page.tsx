@@ -137,7 +137,7 @@ function AuthenticationDemo({ authState }: { authState: any }) {
 
         {!isAuthenticated && (
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Please authenticate through the AI Portal to see your user
+            Please authenticate through the Busibox Portal to see your user
             information.
           </p>
         )}
