@@ -3,7 +3,7 @@
  * DEMO FILE - DELETE WHEN BUILDING REAL APP
  * ============================================
  * 
- * This file is part of the app-template demo.
+ * This file is part of the busibox-template demo.
  * Delete this entire file when starting your real app.
  * 
  * See DEMO.md for complete deletion checklist.

@@ -2,7 +2,7 @@
 
 **⚠️ DELETE ALL DEMO FEATURES BEFORE BUILDING YOUR PRODUCTION APP**
 
-This document lists all demo features included in the app-template and provides instructions for removing them.
+This document lists all demo features included in the busibox-template and provides instructions for removing them.
 
 ## Purpose
 

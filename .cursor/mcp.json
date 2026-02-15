@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "busibox-app-builder": {
+      "command": "node",
+      "args": ["../busibox/tools/mcp-app-builder/dist/index.js"]
+    }
+  }
+}

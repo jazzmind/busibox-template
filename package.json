@@ -1,5 +1,5 @@
 {
-  "name": "busibox-app-template",
+  "name": "busibox-template",
   "version": "0.1.0",
   "private": true,
   "description": "Busibox Next.js App Template - supports both frontend-only and Prisma modes",

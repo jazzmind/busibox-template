@@ -76,7 +76,7 @@ make deploy-<app-name> INV=inventory/staging
 ### Project Structure
 
 ```
-app-template/
+busibox-template/
 ├── app/                    # Next.js App Router
 │   ├── api/               # API routes
 │   │   ├── auth/          # Authentication endpoints
@@ -444,9 +444,9 @@ npx prisma db push --force-reset  # CAUTION: destroys data
 ## Related Projects
 
 - **Busibox**: Infrastructure and deployment automation
-- **AI Portal**: Main dashboard application
+- **Busibox Portal**: Main dashboard application
 - **Busibox-App**: Shared component library (@jazzmind/busibox-app)
-- **Agent Manager**: Reference implementation (frontend-only mode)
+- **Busibox Agents**: Reference implementation (frontend-only mode)
 
 ## Important Notes
 

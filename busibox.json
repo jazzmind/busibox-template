@@ -1,7 +1,7 @@
 {
   "$schema": "https://busibox.io/schemas/app-manifest-v1.json",
   "name": "Busibox App Template Demo",
-  "id": "app-template-demo",
+  "id": "busibox-template-demo",
   "version": "1.0.0",
   "description": "Demo application showcasing Busibox SSO authentication, database operations, and agent API calls. Includes deletable demo features for testing deployment.",
   "icon": "Boxes",

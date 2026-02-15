@@ -120,7 +120,7 @@ function AppShellContent({ children, basePath }: { children: React.ReactNode; ba
 
 export function AppShell({ children, basePath }: { children: React.ReactNode; basePath: string }) {
   const portalUrl = process.env.NEXT_PUBLIC_AI_PORTAL_URL || '';
-  const appId = process.env.APP_NAME || 'app-template';
+  const appId = process.env.APP_NAME || 'busibox-template';
   
   return (
     <AuthProvider

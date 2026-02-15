@@ -19,7 +19,7 @@ A production-ready Next.js 16 template for building apps that integrate with the
 
 ```bash
 # Copy template to new project
-cp -r app-template my-new-app
+cp -r busibox-template my-new-app
 cd my-new-app
 
 # Update package.json name
@@ -355,8 +355,8 @@ npx prisma db pull
 ## Related Projects
 
 - **Busibox** - Infrastructure and deployment
-- **AI Portal** - Main dashboard application
-- **Agent Manager** - Reference frontend-only implementation
+- **Busibox Portal** - Main dashboard application
+- **Busibox Agents** - Reference frontend-only implementation
 - **@jazzmind/busibox-app** - Shared component library
 
 ## License

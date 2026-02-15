@@ -11,7 +11,7 @@
  * 4. Use ensureDocuments() to create documents on first use
  * 5. Implement typed operations that call the generic CRUD
  *
- * @see status-report and estimator for full implementations
+ * @see busibox-projects and estimator for full implementations
  */
 
 import {
