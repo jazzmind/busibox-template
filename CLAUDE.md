@@ -4,12 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) and Cursor AI when w
 
 ## Project Overview
 
-**Busibox App Template** is a Next.js 16 application template designed for rapid development of apps that integrate with the Busibox infrastructure. It supports two operational modes:
+**Busibox App Template** is a Next.js 16 application template designed for rapid development of apps that integrate with the Busibox infrastructure. All data storage uses the Busibox data-api service - no direct database access.
 
-1. **Frontend-Only Mode** (APP_MODE=frontend): Pure frontend with API proxying to backend services
-2. **Prisma Mode** (APP_MODE=prisma): Direct database access via Prisma ORM
-
-**Key Architecture**: Choose your mode based on whether your app needs direct database access or will proxy to existing backend APIs.
+**Key Architecture**: Frontend app with data-api for storage, agent-api for AI, and authz for authentication. No Prisma or direct database access.
 
 ## Quick Start
 
@@ -29,17 +26,12 @@ npm run build
 npm start
 
 # Testing
-npm test                 # Run tests
-npm run test:watch       # Watch mode
-npm run test:coverage    # With coverage
+npm test              # Run tests
+npm run test:watch    # Watch mode
+npm run test:coverage # With coverage
 
 # Linting
 npm run lint
-
-# Database (Prisma mode only)
-npm run db:push          # Push schema changes
-npm run db:generate      # Generate Prisma client
-npm run db:studio        # Open Prisma Studio
 ```
 
 ### Environment Setup
@@ -56,10 +48,10 @@ cp env.example .env.local
 cd /path/to/busibox/provision/ansible
 
 # Deploy to production:
-make deploy-<app-name>
+make install SERVICE=<app-name>
 
 # Deploy to staging:
-make deploy-<app-name> INV=inventory/staging
+make install SERVICE=<app-name> INV=inventory/staging
 ```
 
 ## Architecture
@@ -68,7 +60,7 @@ make deploy-<app-name> INV=inventory/staging
 
 - **Framework**: Next.js 16 (App Router with Turbopack)
 - **UI**: React 19, TypeScript 5, Tailwind CSS 4
-- **Database**: Prisma 6 (optional, for prisma mode)
+- **Storage**: Busibox data-api (no direct database access)
 - **Auth**: Busibox SSO via authz service (JWKS/RS256)
 - **Shared Components**: @jazzmind/busibox-app
 - **Deployment**: PM2, nginx (apps-lxc container), Ansible
@@ -93,53 +85,38 @@ busibox-template/
 ├── lib/                   # Utilities
 │   ├── auth-middleware.ts # Auth middleware
 │   ├── authz-client.ts    # AuthZ service client
+│   ├── data-api-client.ts # Data API client (schemas + CRUD)
+│   ├── api-client.ts      # Generic API client
 │   ├── sso.ts             # SSO validation (JWKS)
-│   ├── prisma.ts          # Prisma client (prisma mode)
-│   ├── api-client.ts      # API client (frontend mode)
 │   └── types.ts           # Shared types
-├── prisma/                # Prisma schema
-├── scripts/               # Utility scripts
-└── test/                  # Test setup
+├── .cursor/rules/         # Cursor AI rules
+├── CLAUDE.md              # This file
+└── env.example            # Environment template
 ```
 
-### Operational Modes
+### Data Storage Pattern
 
-#### Frontend-Only Mode (APP_MODE=frontend)
-
-Use when your app proxies to existing backend APIs:
+All data is stored via the Busibox data-api service using the `@jazzmind/busibox-app` client:
 
 ```typescript
-// app/api/items/route.ts
-export async function GET(request: NextRequest) {
-  const auth = await requireAuthWithTokenExchange(request);
-  if (auth instanceof NextResponse) return auth;
+// 1. Define document schemas in lib/data-api-client.ts
+export const itemSchema: AppDataSchema = {
+  fields: {
+    id: { type: 'string', required: true, hidden: true },
+    name: { type: 'string', required: true, label: 'Name' },
+    // ...
+  },
+  displayName: 'Items',
+  sourceApp: 'my-app',
+  visibility: 'personal',
+};
 
-  const response = await fetch(`${BACKEND_API_URL}/items`, {
-    headers: { 'Authorization': `Bearer ${auth.apiToken}` },
-  });
+// 2. Ensure documents exist
+const documentIds = await ensureDataDocuments(auth.apiToken);
 
-  return NextResponse.json(await response.json());
-}
-```
-
-#### Prisma Mode (APP_MODE=prisma)
-
-Use when your app needs direct database access:
-
-```typescript
-// app/api/items/route.ts
-import { prisma } from '@/lib/prisma';
-
-export async function GET(request: NextRequest) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const items = await prisma.item.findMany({
-    where: { organizationId: session.organizationId },
-  });
-
-  return NextResponse.json(items);
-}
+// 3. CRUD operations
+const items = await listItems(auth.apiToken, documentIds.items);
+const item = await createItem(auth.apiToken, documentIds.items, input);
 ```
 
 ## Key Patterns
@@ -180,11 +157,12 @@ const response = await fetch('/api/sso', {
 import { requireAuthWithTokenExchange } from '@/lib/auth-middleware';
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAuthWithTokenExchange(request);
+  const auth = await requireAuthWithTokenExchange(request, 'data-api');
   if (auth instanceof NextResponse) return auth;
 
   // auth.ssoToken - original session JWT
-  // auth.apiToken - exchanged API token
+  // auth.apiToken - exchanged API token for data-api calls
+  // auth.isTestUser - true if using TEST_SESSION_JWT
 }
 ```
 
@@ -251,33 +229,33 @@ export async function GET(
 
 ## Environment Variables
 
-### Required (All Modes)
+### Required
 
 ```bash
 # Application
 NODE_ENV=development
 PORT=3002
-NEXT_PUBLIC_BASE_PATH=          # e.g., /myapp for nginx proxy
+NEXT_PUBLIC_BASE_PATH=       # e.g., /myapp for nginx proxy
 NEXT_PUBLIC_APP_URL=http://localhost:3002
 
 # Authentication
 NEXT_PUBLIC_BUSIBOX_PORTAL_URL=http://localhost:3000
 AUTHZ_BASE_URL=http://localhost:8010
-APP_NAME=My App                 # For token audience validation
+APP_NAME=My App              # For token audience validation
 ```
 
-### Frontend-Only Mode
+### Backend Services
 
 ```bash
-# Backend API URLs
+# Data API (for structured data storage)
+DATA_API_URL=http://localhost:8002
+DEFAULT_API_AUDIENCE=data-api
+
+# Backend API (for custom backend proxy)
 NEXT_PUBLIC_BACKEND_API_URL=http://localhost:8000
-```
 
-### Prisma Mode
-
-```bash
-# Database
-DATABASE_URL=postgresql://user:pass@localhost:5432/myapp
+# Agent API (for AI agent interactions)
+AGENT_API_URL=http://localhost:8000
 ```
 
 ## Development Workflow
@@ -285,19 +263,27 @@ DATABASE_URL=postgresql://user:pass@localhost:5432/myapp
 ### Adding a New Feature
 
 1. **Plan the feature**:
-   - Determine if frontend-only or prisma access needed
+   - Define data model (schemas in `lib/data-api-client.ts`)
    - Design UI components
    - Define API routes
 
-2. **Create API routes**:
+2. **Define data model**:
+   ```typescript
+   // lib/data-api-client.ts
+   export const mySchema: AppDataSchema = { ... };
+   ```
+
+3. **Create API routes**:
    ```typescript
    // app/api/feature/route.ts
    export async function GET(request: NextRequest) {
-     // Implementation based on mode
+     const auth = await requireAuthWithTokenExchange(request, 'data-api');
+     if (auth instanceof NextResponse) return auth;
+     // ...
    }
    ```
 
-3. **Create components**:
+4. **Create components**:
    ```typescript
    // components/feature/FeatureComponent.tsx
    export function FeatureComponent() {
@@ -305,19 +291,13 @@ DATABASE_URL=postgresql://user:pass@localhost:5432/myapp
    }
    ```
 
-4. **Add pages**:
+5. **Add pages**:
    ```typescript
    // app/feature/page.tsx
    export default function FeaturePage() {
      // Implementation
    }
    ```
-
-### Adding Database Models (Prisma Mode)
-
-1. Edit `prisma/schema.prisma`
-2. Run `npm run db:push` (development) or create migration
-3. Run `npm run db:generate`
 
 ## Testing
 
@@ -351,6 +331,7 @@ The `@jazzmind/busibox-app` package provides:
 - **CustomizationProvider**: Branding
 - **FetchWrapper**: Auth-aware fetch
 - **Footer, VersionBar**: Standard UI elements
+- **Data API Client**: `ensureDocuments`, `queryRecords`, `insertRecords`, etc.
 
 ### Deployment
 
@@ -365,14 +346,16 @@ Apps are deployed to the apps-lxc container via Ansible:
 
 ```bash
 # Production IPs
-AI Portal:    10.96.200.201:3000
-AuthZ:        10.96.200.210:8010
-Apps LXC:     10.96.200.201
+AI Portal: 10.96.200.201:3000
+AuthZ: 10.96.200.210:8010
+Data API: 10.96.200.206:8002
+Apps LXC: 10.96.200.201
 
 # Staging IPs
-AI Portal:    10.96.201.201:3000
-AuthZ:        10.96.201.210:8010
-Apps LXC:     10.96.201.201
+AI Portal: 10.96.201.201:3000
+AuthZ: 10.96.201.210:8010
+Data API: 10.96.201.206:8002
+Apps LXC: 10.96.201.201
 ```
 
 ## Best Practices
@@ -387,17 +370,18 @@ Apps LXC:     10.96.201.201
 
 ### API Routes
 
-- Always authenticate requests
+- Always authenticate requests with `requireAuthWithTokenExchange`
+- Specify the correct audience (`data-api`, `agent-api`, etc.)
 - Handle errors gracefully
 - Return appropriate status codes
 - Use proper TypeScript types
 
-### Database (Prisma Mode)
+### Data Storage
 
-- Always filter by organizationId for multi-tenant data
-- Use transactions for multi-record operations
-- Handle errors with try/catch
-- Use `prisma db push` for development, migrations for production
+- Define schemas in `lib/data-api-client.ts`
+- Use `ensureDataDocuments()` before CRUD operations
+- Use `generateId()` and `getNow()` from `@jazzmind/busibox-app`
+- Handle not-found cases properly
 
 ### Security
 
@@ -418,6 +402,13 @@ curl http://authz:8010/health
 curl http://authz:8010/.well-known/jwks.json
 ```
 
+### Data API Issues
+
+```bash
+# Check data-api health
+curl http://data-api:8002/health
+```
+
 ### Build Issues
 
 ```bash
@@ -429,26 +420,17 @@ rm -rf node_modules package-lock.json
 npm install
 ```
 
-### Prisma Issues
-
-```bash
-# Regenerate client
-npm run db:generate
-
-# Reset database (development only)
-npx prisma db push --force-reset  # CAUTION: destroys data
-```
-
 ## Related Projects
 
 - **Busibox**: Infrastructure and deployment automation
 - **Busibox Portal**: Main dashboard application
 - **Busibox-App**: Shared component library (@jazzmind/busibox-app)
-- **Busibox Agents**: Reference implementation (frontend-only mode)
+- **Busibox Agents**: Reference implementation
+- **Busibox Projects**: Reference data-api implementation
 
 ## Important Notes
 
-1. **Choose your mode**: Set APP_MODE=frontend or APP_MODE=prisma based on your needs
+1. **No direct database access**: All storage goes through data-api
 2. **Authentication**: All apps use Busibox SSO - no custom auth needed
 3. **Deployment**: Always use Ansible for deployment to Busibox infrastructure
 4. **Port**: Default port is 3002 (adjust in env if needed)

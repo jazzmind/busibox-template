@@ -3,20 +3,14 @@
   "name": "Busibox App Template Demo",
   "id": "busibox-template-demo",
   "version": "1.0.0",
-  "description": "Demo application showcasing Busibox SSO authentication, database operations, and agent API calls. Includes deletable demo features for testing deployment.",
+  "description": "Demo application showcasing Busibox SSO authentication, data-api CRUD operations, and agent API calls. Includes deletable demo features for testing deployment.",
   "icon": "Boxes",
   "defaultPath": "/myapp",
   "defaultPort": 3002,
   "healthEndpoint": "/api/health",
   "buildCommand": "npm run build",
   "startCommand": "npm start",
-  "appMode": "prisma",
-  "database": {
-    "required": true,
-    "preferredName": "app_template_demo",
-    "schemaManagement": "prisma",
-    "seedCommand": "npm run db:seed"
-  },
+  "appMode": "frontend",
   "requiredEnvVars": [],
   "optionalEnvVars": [
     "NEXT_PUBLIC_DEBUG",

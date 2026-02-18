@@ -79,7 +79,7 @@ export default function Error({
 
 - Route params must be typed as `Promise<{ id: string }>`
 - Params must be awaited: `const { id } = await params`
-- Convert string IDs to numbers if Prisma expects numeric IDs
+- Ensure IDs are strings when using data-api
 
 ## Examples
 

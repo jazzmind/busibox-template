@@ -1,23 +1,15 @@
 /**
- * Data API Client Example for Busibox App Template
+ * Data API Client for Busibox App Template
  *
- * Demonstrates how to use the shared data documents client from @jazzmind/busibox-app
- * for structured data storage via the Busibox data-api service.
+ * Provides typed CRUD operations for demo notes using the Busibox data-api service.
+ * Uses shared client from @jazzmind/busibox-app.
  *
- * Pattern:
- * 1. Import generic CRUD (queryRecords, insertRecords, etc.) from busibox-app
- * 2. Define app-specific DOCUMENTS constant and schemas
- * 3. Add graphNode and graphRelationships to schemas for Neo4j knowledge graph sync
- * 4. Use ensureDocuments() to create documents on first use
- * 5. Implement typed operations that call the generic CRUD
- *
- * @see busibox-projects and estimator for full implementations
+ * Replace the demo document/schema with your own app's data model.
  */
 
 import {
   generateId,
   getNow,
-  cleanRecord,
   queryRecords,
   insertRecords,
   updateRecords,
@@ -25,96 +17,140 @@ import {
   ensureDocuments,
 } from '@jazzmind/busibox-app';
 import type { AppDataSchema } from '@jazzmind/busibox-app';
-import type { QueryFilter } from '@jazzmind/busibox-app';
-import type { DemoItem } from './types';
+import type { DemoNote, CreateNoteInput, UpdateNoteInput } from './types';
 
 // ==========================================================================
 // Data Document Names
 // ==========================================================================
 
 export const DOCUMENTS = {
-  ITEMS: 'demo-items',
+  NOTES: 'busibox-template-notes',
 } as const;
 
 // ==========================================================================
-// Schemas (with graphNode for Neo4j sync)
+// Schemas
 // ==========================================================================
 
-export const itemSchema: AppDataSchema = {
+export const noteSchema: AppDataSchema = {
   fields: {
     id: { type: 'string', required: true, hidden: true },
-    name: { type: 'string', required: true, label: 'Name', order: 1 },
-    description: { type: 'string', label: 'Description', multiline: true, order: 2 },
-    category: { type: 'string', label: 'Category', order: 3 },
-    createdAt: { type: 'string', label: 'Created', readonly: true, hidden: true },
-    updatedAt: { type: 'string', label: 'Updated', readonly: true, hidden: true },
+    title: { type: 'string', required: true, label: 'Title', order: 1 },
+    content: { type: 'string', required: true, label: 'Content', multiline: true, order: 2 },
+    createdAt: { type: 'string', label: 'Created', readonly: true, hidden: true, order: 3 },
+    updatedAt: { type: 'string', label: 'Updated', readonly: true, hidden: true, order: 4 },
   },
-  displayName: 'Demo Items',
-  itemLabel: 'Item',
-  sourceApp: 'my-app',
+  displayName: 'Notes',
+  itemLabel: 'Note',
+  sourceApp: 'busibox-template',
   visibility: 'personal',
-  allowSharing: true,
-  graphNode: 'DemoItem',
+  allowSharing: false,
+  graphNode: '',
   graphRelationships: [],
 };
 
 // ==========================================================================
-// Document Setup
+// ensureDataDocuments
 // ==========================================================================
 
-const DOCUMENT_CONFIG = {
-  items: { name: DOCUMENTS.ITEMS, schema: itemSchema, visibility: 'personal' as const },
-};
-
-export interface DocumentIds {
-  items: string;
+export async function ensureDataDocuments(token: string): Promise<{
+  notes: string;
+}> {
+  const ids = await ensureDocuments(
+    token,
+    {
+      notes: {
+        name: DOCUMENTS.NOTES,
+        schema: noteSchema,
+        visibility: 'personal',
+      },
+    },
+    'busibox-template'
+  );
+  return ids as { notes: string };
 }
 
-/**
- * Ensure data documents exist. Call before any CRUD operations.
- */
-export async function ensureDataDocuments(token: string): Promise<DocumentIds> {
-  return ensureDocuments(token, DOCUMENT_CONFIG, 'my-app');
-}
-
 // ==========================================================================
-// Typed Operations
+// Note Operations
 // ==========================================================================
 
-export async function listItems(
+export async function listNotes(
   token: string,
   documentId: string,
-  options?: { category?: string; limit?: number }
-): Promise<{ items: DemoItem[]; total: number }> {
-  const where: QueryFilter | undefined = options?.category
-    ? { field: 'category', op: 'eq', value: options.category }
-    : undefined;
-
-  const result = await queryRecords<DemoItem>(token, documentId, {
-    where,
+  options?: { limit?: number; offset?: number }
+): Promise<{ notes: DemoNote[]; total: number }> {
+  const result = await queryRecords<DemoNote>(token, documentId, {
     orderBy: [{ field: 'createdAt', direction: 'desc' }],
-    limit: options?.limit ?? 50,
+    limit: options?.limit,
+    offset: options?.offset,
   });
 
-  return { items: result.records, total: result.total };
+  return { notes: result.records, total: result.total };
 }
 
-export async function createItem(
+export async function getNote(
   token: string,
   documentId: string,
-  input: Omit<DemoItem, 'id' | 'createdAt' | 'updatedAt'>
-): Promise<DemoItem> {
+  noteId: string
+): Promise<DemoNote | null> {
+  const result = await queryRecords<DemoNote>(token, documentId, {
+    where: { field: 'id', op: 'eq', value: noteId },
+    limit: 1,
+  });
+
+  return result.records[0] || null;
+}
+
+export async function createNote(
+  token: string,
+  documentId: string,
+  input: CreateNoteInput
+): Promise<DemoNote> {
   const now = getNow();
-  const record = cleanRecord<DemoItem>({
+  const note: DemoNote = {
     id: generateId(),
-    ...input,
+    title: input.title,
+    content: input.content,
     createdAt: now,
     updatedAt: now,
-  });
+  };
 
-  await insertRecords(token, documentId, [record]);
-  return record;
+  await insertRecords(token, documentId, [note]);
+  return note;
 }
 
-// Re-export generic CRUD for routes that need them directly
-export { queryRecords, insertRecords, updateRecords, deleteRecords } from '@jazzmind/busibox-app';
+export async function updateNote(
+  token: string,
+  documentId: string,
+  noteId: string,
+  input: UpdateNoteInput
+): Promise<DemoNote | null> {
+  const existing = await getNote(token, documentId, noteId);
+  if (!existing) return null;
+
+  const updates = {
+    ...input,
+    updatedAt: getNow(),
+  };
+
+  await updateRecords(
+    token,
+    documentId,
+    updates,
+    { field: 'id', op: 'eq', value: noteId }
+  );
+
+  return { ...existing, ...updates };
+}
+
+export async function deleteNote(
+  token: string,
+  documentId: string,
+  noteId: string
+): Promise<boolean> {
+  const result = await deleteRecords(
+    token,
+    documentId,
+    { field: 'id', op: 'eq', value: noteId }
+  );
+  return result.count > 0;
+}

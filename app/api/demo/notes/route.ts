@@ -11,9 +11,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuthWithTokenExchange } from "@/lib/auth-middleware";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { ensureDataDocuments, listNotes, createNote } from "@/lib/data-api-client";
 
 /**
  * GET /api/demo/notes
@@ -21,22 +19,15 @@ const prisma = new PrismaClient();
  */
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireAuthWithTokenExchange(request);
+    const auth = await requireAuthWithTokenExchange(request, "data-api");
     if (auth instanceof NextResponse) return auth;
 
-    // Extract userId from SSO token
-    // In production, decode the JWT to get the actual user ID
-    // For now, we'll use a test user ID or extract from the token
-    const userId = process.env.TEST_USER_ID || "test-user-id";
-
-    const notes = await prisma.demoNote.findMany({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-    });
+    const documentIds = await ensureDataDocuments(auth.apiToken);
+    const { notes, total } = await listNotes(auth.apiToken, documentIds.notes);
 
     return NextResponse.json({
       notes,
-      count: notes.length,
+      count: total,
     });
   } catch (error) {
     console.error("[DEMO] Failed to fetch notes:", error);
@@ -56,13 +47,12 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireAuthWithTokenExchange(request);
+    const auth = await requireAuthWithTokenExchange(request, "data-api");
     if (auth instanceof NextResponse) return auth;
 
     const body = await request.json();
     const { title, content } = body;
 
-    // Validation
     if (!title || typeof title !== "string") {
       return NextResponse.json(
         { error: "Title is required and must be a string" },
@@ -77,15 +67,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Extract userId from SSO token
-    const userId = process.env.TEST_USER_ID || "test-user-id";
-
-    const note = await prisma.demoNote.create({
-      data: {
-        title: title.trim(),
-        content: content.trim(),
-        userId,
-      },
+    const documentIds = await ensureDataDocuments(auth.apiToken);
+    const note = await createNote(auth.apiToken, documentIds.notes, {
+      title: title.trim(),
+      content: content.trim(),
     });
 
     return NextResponse.json(note, { status: 201 });

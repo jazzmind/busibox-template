@@ -8,18 +8,20 @@ alwaysApply: true
 
 ## Planning Requirements
 
-- **Assess Project Mode** - Check APP_MODE:
-  - `frontend`: API proxy pattern, no direct DB access
-  - `prisma`: Direct database access via Prisma ORM
+- **Architecture**: All apps use frontend mode with data-api for storage
+  - No direct database access
+  - All data via API routes that call data-api or other backend services
+  - Token exchange via authz for each backend service
 - **Planning First** - Before writing code:
-  1. Verify feature aligns with chosen mode
+  1. Verify feature aligns with data-api storage pattern
   2. Document requirements and behaviors
   3. Define testing strategy
 
 ## Architecture Alignment
 
-- **Frontend Mode**: All data via API routes that proxy to backend services
-- **Prisma Mode**: Direct database access with proper multi-tenant isolation
+- **Data Storage**: All data via data-api (see lib/data-api-client.ts)
+- **Agent Calls**: Via agent-api with token exchange
+- **Auth**: Busibox SSO with Zero Trust token exchange
 
 ## Requirements Documentation
 
@@ -40,6 +42,6 @@ alwaysApply: true
 - Verify deployment compatibility
 
 <critical>
-- NEVER mix modes - frontend routes should not access Prisma directly
+- NEVER access databases directly - all storage goes through data-api
 - ALWAYS check existing patterns before implementing
 </critical>

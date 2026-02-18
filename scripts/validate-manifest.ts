@@ -22,13 +22,7 @@ interface BusiboxManifest {
   healthEndpoint: string;
   buildCommand: string;
   startCommand: string;
-  appMode: 'frontend' | 'prisma';
-  database?: {
-    required: boolean;
-    preferredName: string;
-    schemaManagement: 'prisma' | 'migrations' | 'manual';
-    seedCommand?: string;
-  };
+  appMode: 'frontend';
   requiredEnvVars: string[];
   optionalEnvVars?: string[];
   busiboxAppVersion?: string;
@@ -108,38 +102,13 @@ function validateManifest(manifest: unknown): ValidationError[] {
   }
   
   // Validate appMode
-  if (typeof m.appMode === 'string' && !['frontend', 'prisma'].includes(m.appMode)) {
-    errors.push({ field: 'appMode', message: 'appMode must be either "frontend" or "prisma"' });
+  if (typeof m.appMode === 'string' && m.appMode !== 'frontend') {
+    errors.push({ field: 'appMode', message: 'appMode must be "frontend"' });
   }
   
   // Validate defaultPort
   if (typeof m.defaultPort !== 'number' || m.defaultPort < 1000 || m.defaultPort > 65535) {
     errors.push({ field: 'defaultPort', message: 'defaultPort must be a number between 1000 and 65535' });
-  }
-  
-  // Validate database object if present
-  if (m.database !== undefined) {
-    if (typeof m.database !== 'object' || m.database === null) {
-      errors.push({ field: 'database', message: 'database must be an object' });
-    } else {
-      const db = m.database as Record<string, unknown>;
-      
-      if (typeof db.required !== 'boolean') {
-        errors.push({ field: 'database.required', message: 'database.required must be a boolean' });
-      }
-      
-      if (typeof db.preferredName !== 'string' || !/^[a-z0-9_]+$/.test(db.preferredName)) {
-        errors.push({ field: 'database.preferredName', message: 'database.preferredName must contain only lowercase letters, numbers, and underscores' });
-      }
-      
-      if (typeof db.schemaManagement !== 'string' || !['prisma', 'migrations', 'manual'].includes(db.schemaManagement)) {
-        errors.push({ field: 'database.schemaManagement', message: 'database.schemaManagement must be "prisma", "migrations", or "manual"' });
-      }
-      
-      if (db.seedCommand !== undefined && typeof db.seedCommand !== 'string') {
-        errors.push({ field: 'database.seedCommand', message: 'database.seedCommand must be a string if provided' });
-      }
-    }
   }
   
   // Validate requiredEnvVars
@@ -212,7 +181,7 @@ function main() {
   console.log(`  App Mode: ${m.appMode}`);
   console.log(`  Default Path: ${m.defaultPath}`);
   console.log(`  Default Port: ${m.defaultPort}`);
-  console.log(`  Database Required: ${m.database?.required ?? false}`);
+  console.log(`  Storage: data-api`);
   console.log(`  Required Env Vars: ${m.requiredEnvVars.length > 0 ? m.requiredEnvVars.join(', ') : 'None'}`);
   
   process.exit(0);

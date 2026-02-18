@@ -11,9 +11,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuthWithTokenExchange } from "@/lib/auth-middleware";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { ensureDataDocuments, getNote, updateNote, deleteNote } from "@/lib/data-api-client";
 
 /**
  * GET /api/demo/notes/[id]
@@ -24,28 +22,17 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireAuthWithTokenExchange(request);
+    const auth = await requireAuthWithTokenExchange(request, "data-api");
     if (auth instanceof NextResponse) return auth;
 
     const { id } = await params;
-    const userId = process.env.TEST_USER_ID || "test-user-id";
-
-    const note = await prisma.demoNote.findUnique({
-      where: { id },
-    });
+    const documentIds = await ensureDataDocuments(auth.apiToken);
+    const note = await getNote(auth.apiToken, documentIds.notes, id);
 
     if (!note) {
       return NextResponse.json(
         { error: "Note not found" },
         { status: 404 }
-      );
-    }
-
-    // Verify ownership
-    if (note.userId !== userId) {
-      return NextResponse.json(
-        { error: "Not authorized to access this note" },
-        { status: 403 }
       );
     }
 
@@ -71,34 +58,13 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireAuthWithTokenExchange(request);
+    const auth = await requireAuthWithTokenExchange(request, "data-api");
     if (auth instanceof NextResponse) return auth;
 
     const { id } = await params;
     const body = await request.json();
     const { title, content } = body;
-    const userId = process.env.TEST_USER_ID || "test-user-id";
 
-    // Check if note exists and verify ownership
-    const existingNote = await prisma.demoNote.findUnique({
-      where: { id },
-    });
-
-    if (!existingNote) {
-      return NextResponse.json(
-        { error: "Note not found" },
-        { status: 404 }
-      );
-    }
-
-    if (existingNote.userId !== userId) {
-      return NextResponse.json(
-        { error: "Not authorized to update this note" },
-        { status: 403 }
-      );
-    }
-
-    // Prepare update data
     const updateData: { title?: string; content?: string } = {};
     
     if (title !== undefined) {
@@ -121,10 +87,15 @@ export async function PATCH(
       updateData.content = content.trim();
     }
 
-    const note = await prisma.demoNote.update({
-      where: { id },
-      data: updateData,
-    });
+    const documentIds = await ensureDataDocuments(auth.apiToken);
+    const note = await updateNote(auth.apiToken, documentIds.notes, id, updateData);
+
+    if (!note) {
+      return NextResponse.json(
+        { error: "Note not found" },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json(note);
   } catch (error) {
@@ -148,34 +119,19 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireAuthWithTokenExchange(request);
+    const auth = await requireAuthWithTokenExchange(request, "data-api");
     if (auth instanceof NextResponse) return auth;
 
     const { id } = await params;
-    const userId = process.env.TEST_USER_ID || "test-user-id";
+    const documentIds = await ensureDataDocuments(auth.apiToken);
+    const deleted = await deleteNote(auth.apiToken, documentIds.notes, id);
 
-    // Check if note exists and verify ownership
-    const existingNote = await prisma.demoNote.findUnique({
-      where: { id },
-    });
-
-    if (!existingNote) {
+    if (!deleted) {
       return NextResponse.json(
         { error: "Note not found" },
         { status: 404 }
       );
     }
-
-    if (existingNote.userId !== userId) {
-      return NextResponse.json(
-        { error: "Not authorized to delete this note" },
-        { status: 403 }
-      );
-    }
-
-    await prisma.demoNote.delete({
-      where: { id },
-    });
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {

@@ -8,7 +8,8 @@ alwaysApply: false
 
 ## Context
 - Next.js 16 App Router API routes
-- Supports both frontend-only (proxy) and prisma modes
+- All data operations go through data-api or other backend services
+- Zero Trust token exchange for each backend service
 
 ## Requirements
 
@@ -28,7 +29,24 @@ export async function GET(
 }
 ```
 
-### Frontend-Only Mode (Proxy Pattern)
+### Data API Pattern
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server';
+import { requireAuthWithTokenExchange } from '@/lib/auth-middleware';
+import { ensureDataDocuments, listItems } from '@/lib/data-api-client';
+
+export async function GET(request: NextRequest) {
+  const auth = await requireAuthWithTokenExchange(request, 'data-api');
+  if (auth instanceof NextResponse) return auth;
+
+  const documentIds = await ensureDataDocuments(auth.apiToken);
+  const result = await listItems(auth.apiToken, documentIds.items);
+  return NextResponse.json(result);
+}
+```
+
+### Backend Proxy Pattern
 
 ```typescript
 import { NextRequest, NextResponse } from 'next/server';
@@ -37,7 +55,7 @@ import { requireAuthWithTokenExchange } from '@/lib/auth-middleware';
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL;
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAuthWithTokenExchange(request);
+  const auth = await requireAuthWithTokenExchange(request, 'agent-api');
   if (auth instanceof NextResponse) return auth;
 
   const response = await fetch(`${BACKEND_URL}/items`, {
@@ -50,27 +68,6 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(await response.json(), {
     status: response.status,
   });
-}
-```
-
-### Prisma Mode (Direct Access)
-
-```typescript
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { getSession } from '@/lib/auth';
-
-export async function GET(request: NextRequest) {
-  const session = await getSession();
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const items = await prisma.item.findMany({
-    where: { organizationId: session.organizationId },
-  });
-
-  return NextResponse.json(items);
 }
 ```
 
@@ -93,31 +90,23 @@ export async function GET(request: NextRequest) {
 ## Examples
 
 <example>
-✅ Correct proxy route:
+✅ Correct data-api route:
 ```typescript
 export async function POST(request: NextRequest) {
-  const auth = await requireAuthWithTokenExchange(request);
+  const auth = await requireAuthWithTokenExchange(request, 'data-api');
   if (auth instanceof NextResponse) return auth;
 
   const body = await request.json();
-  const response = await fetch(`${BACKEND_URL}/items`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${auth.apiToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-  });
-
-  return NextResponse.json(await response.json(), {
-    status: response.status,
-  });
+  const documentIds = await ensureDataDocuments(auth.apiToken);
+  const item = await createItem(auth.apiToken, documentIds.items, body);
+  return NextResponse.json(item, { status: 201 });
 }
 ```
 </example>
 
 <critical>
-- ALWAYS authenticate requests
+- ALWAYS authenticate requests with requireAuthWithTokenExchange
 - ALWAYS await params before use
-- NEVER mix proxy and prisma patterns in same route
+- ALWAYS specify the correct audience ('data-api', 'agent-api', etc.)
+- NEVER access databases directly
 </critical>

@@ -2,7 +2,6 @@
  * API Client for Frontend-Only Mode
  *
  * Generic API client for proxying requests to backend services.
- * Use this when APP_MODE=frontend.
  */
 
 import type { ApiError, ApiResponse } from "./types";

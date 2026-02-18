@@ -19,7 +19,6 @@ interface DemoNote {
   id: string;
   title: string;
   content: string;
-  userId: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -58,8 +57,8 @@ export default function DemoPage() {
       {/* Section 1: Authentication Info */}
       <AuthenticationDemo authState={safeAuthState} />
 
-      {/* Section 2: Database CRUD Demo */}
-      <DatabaseCRUDDemo />
+      {/* Section 2: Data API CRUD Demo */}
+      <DataAPICRUDDemo />
 
       {/* Section 3: Agent API Demo */}
       <AgentAPIDemo />
@@ -147,10 +146,10 @@ function AuthenticationDemo({ authState }: { authState: any }) {
 }
 
 // ============================================================================
-// Section 2: Database CRUD Demo
+// Section 2: Data API CRUD Demo
 // ============================================================================
 
-function DatabaseCRUDDemo() {
+function DataAPICRUDDemo() {
   const [notes, setNotes] = useState<DemoNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -267,7 +266,7 @@ function DatabaseCRUDDemo() {
     <section className="mb-12 bg-white dark:bg-gray-800 rounded-lg shadow p-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
-          2. Database CRUD Operations
+          2. Data API CRUD Operations
         </h2>
         <span className="text-xs text-gray-500 dark:text-gray-400">
           DEMO - DELETE THIS SECTION
@@ -275,7 +274,7 @@ function DatabaseCRUDDemo() {
       </div>
 
       <p className="text-gray-600 dark:text-gray-300 mb-6">
-        Tests Prisma database operations with the DemoNote model.
+        Tests data-api CRUD operations with notes stored via the Busibox data service.
       </p>
 
       {error && (

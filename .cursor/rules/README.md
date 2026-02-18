@@ -6,7 +6,7 @@ This directory contains rules for AI agents (Cursor, Claude Code, etc.) to follo
 
 These rules ensure:
 - **Consistency** - Code follows Next.js 16 App Router best practices
-- **Architecture** - Proper mode usage (frontend-only vs prisma)
+- **Architecture** - All data storage via data-api
 - **Quality** - Components and APIs are properly structured
 - **Maintainability** - Code is organized predictably
 
@@ -18,44 +18,35 @@ These rules ensure:
 | `001-architect.mdc` | Planning and architecture decisions |
 | `002-nextjs-patterns.mdc` | Next.js 16 App Router patterns |
 | `003-component-org.mdc` | Component organization |
-| `004-database.mdc` | Prisma patterns (prisma mode) |
+| `004-database.mdc` | Data API storage patterns |
 | `005-api-routes.mdc` | API route patterns |
 | `006-authentication.mdc` | Busibox SSO authentication |
 | `007-error-handling.mdc` | Error handling approach |
 | `008-testing.mdc` | Testing standards |
 
-## Key Principle: Choose Your Mode
+## Key Principle: Data API Storage
 
-This template supports two operational modes:
+All apps use the Busibox data-api for storage:
 
-### Frontend-Only Mode (APP_MODE=frontend)
-- All data via API proxy routes
-- No direct database access
-- Use `requireAuthWithTokenExchange` for auth
-
-### Prisma Mode (APP_MODE=prisma)
-- Direct database access via Prisma
-- Multi-tenant with organizationId filtering
-- Use `getSession` for auth
+- Define schemas in `lib/data-api-client.ts`
+- Use `ensureDataDocuments()` before CRUD operations
+- Use `requireAuthWithTokenExchange(request, 'data-api')` for auth
+- No direct database access needed
 
 ## Quick Reference
 
-### "What mode should I use?"
-- **Frontend-only**: App proxies to existing backend APIs
-- **Prisma**: App needs its own database
-
 ### "Where should I create this component?"
-- **Shared** → `components/`
-- **Feature-specific** → `components/[feature]/`
-- **Page-only** → `app/[page]/components/`
+- **Shared** -> `components/`
+- **Feature-specific** -> `components/[feature]/`
+- **Page-only** -> `app/[page]/components/`
 
 ### "How do I handle authentication?"
 ```typescript
 // API routes
-const auth = await requireAuthWithTokenExchange(request);
+const auth = await requireAuthWithTokenExchange(request, 'data-api');
 if (auth instanceof NextResponse) return auth;
 
-// Use auth.apiToken for backend calls
+// Use auth.apiToken for data-api calls
 ```
 
 ### "How do I handle route params?"

@@ -1,6 +1,6 @@
 # Busibox App Template
 
-A production-ready Next.js 16 template for building apps that integrate with the Busibox infrastructure.
+A production-ready Next.js 16 template for building apps that integrate with the Busibox infrastructure. Uses the Busibox data-api for all data storage.
 
 ## Features
 
@@ -9,7 +9,7 @@ A production-ready Next.js 16 template for building apps that integrate with the
 - **TypeScript 5** for type safety
 - **Tailwind CSS 4** for styling
 - **Busibox SSO** authentication via authz service
-- **Dual Mode Support**: Frontend-only (API proxy) or Prisma (direct DB)
+- **Data API** storage via @jazzmind/busibox-app client
 - **AI-Optimized**: Comprehensive cursor rules and CLAUDE.md for AI-assisted development
 - **Production Ready**: Standalone output for container deployment
 
@@ -41,9 +41,9 @@ nano .env.local
 
 Key settings to update:
 - `APP_NAME` - Your app name
-- `APP_MODE` - `frontend` or `prisma`
 - `NEXT_PUBLIC_BUSIBOX_PORTAL_URL` - Busibox Portal URL
 - `AUTHZ_BASE_URL` - AuthZ service URL
+- `DATA_API_URL` - Data API service URL
 
 ### 3. Start Development
 
@@ -55,14 +55,14 @@ Visit http://localhost:3002
 
 ## Demo Features (Delete Before Production)
 
-**⚠️ This template includes working demo features for testing deployment.**
+**This template includes working demo features for testing deployment.**
 
 ### What's Included
 
 The demo features test three critical aspects of your Busibox deployment:
 
 1. **SSO Authentication** - Validates user sessions from AI Portal
-2. **Database CRUD** - Tests Prisma operations with PostgreSQL
+2. **Data API CRUD** - Tests data-api operations with notes
 3. **Agent API Calls** - Verifies Zero Trust token exchange
 
 ### Try the Demo
@@ -70,7 +70,7 @@ The demo features test three critical aspects of your Busibox deployment:
 Visit `/demo` after starting the development server to test:
 
 - View authenticated user information
-- Create, read, update, and delete notes
+- Create, read, update, and delete notes via data-api
 - Make downstream calls to agent-api with proper authentication
 
 ### Removing Demo Features
@@ -81,47 +81,28 @@ Quick deletion:
 
 ```bash
 # Delete demo files
-rm -rf app/demo/ app/api/demo/ prisma/seed.ts DEMO.md
-
-# Update schema (remove DemoNote model)
-# Edit prisma/schema.prisma to remove DEMO MODEL section
+rm -rf app/demo/ app/api/demo/ DEMO.md
 
 # Update navigation and home page
 # Remove sections marked with "DEMO" comments
-
-# Push schema changes
-npm run db:push
 ```
 
 See [`DEMO.md`](DEMO.md) for the complete step-by-step deletion guide.
 
-## Operational Modes
+## Architecture
 
-### Frontend-Only Mode (Default)
+### Data Storage
 
-Best for apps that proxy to existing backend APIs.
+All apps use the Busibox data-api for storage. No direct database access is needed.
 
-```bash
-# .env.local
-APP_MODE=frontend
-NEXT_PUBLIC_BACKEND_API_URL=http://localhost:8000
-```
+```typescript
+// lib/data-api-client.ts - Define your data model
+import { ensureDocuments, queryRecords, insertRecords } from '@jazzmind/busibox-app';
 
-### Prisma Mode
-
-Best for apps that need direct database access.
-
-```bash
-# .env.local
-APP_MODE=prisma
-DATABASE_URL=postgresql://user:pass@localhost:5432/myapp
-```
-
-Then set up the database:
-
-```bash
-npm run db:push      # Push schema
-npm run db:generate  # Generate client
+// API routes use token exchange for auth
+const auth = await requireAuthWithTokenExchange(request, 'data-api');
+const documentIds = await ensureDataDocuments(auth.apiToken);
+const items = await listItems(auth.apiToken, documentIds.items);
 ```
 
 ## Project Structure
@@ -137,9 +118,10 @@ my-app/
 ├── lib/                   # Utilities
 │   ├── auth-middleware.ts # Auth middleware
 │   ├── authz-client.ts    # AuthZ client
+│   ├── data-api-client.ts # Data API client
+│   ├── api-client.ts      # Generic API client
 │   ├── sso.ts             # SSO validation
-│   └── prisma.ts          # Prisma client (prisma mode)
-├── prisma/                # Prisma schema
+│   └── types.ts           # Shared types
 ├── .cursor/rules/         # Cursor AI rules
 ├── CLAUDE.md              # Claude Code guidance
 └── env.example            # Environment template
@@ -176,7 +158,11 @@ export const metadata: Metadata = {
 
 Edit `app/app-shell.tsx` to add your navigation links.
 
-### 4. Add Routes
+### 4. Define Your Data Model
+
+Edit `lib/data-api-client.ts` to define your app's data schemas and CRUD functions.
+
+### 5. Add Routes
 
 Create new routes in `app/` directory:
 
@@ -198,15 +184,12 @@ All apps use Busibox SSO via the authz service.
 import { requireAuthWithTokenExchange } from '@/lib/auth-middleware';
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAuthWithTokenExchange(request);
+  const auth = await requireAuthWithTokenExchange(request, 'data-api');
   if (auth instanceof NextResponse) return auth;
 
-  // Use auth.apiToken for backend calls
-  const response = await fetch(`${BACKEND_URL}/items`, {
-    headers: { 'Authorization': `Bearer ${auth.apiToken}` },
-  });
-
-  return NextResponse.json(await response.json());
+  const documentIds = await ensureDataDocuments(auth.apiToken);
+  const items = await listItems(auth.apiToken, documentIds.items);
+  return NextResponse.json(items);
 }
 ```
 
@@ -216,12 +199,12 @@ export async function GET(request: NextRequest) {
 // components/ProtectedComponent.tsx
 'use client';
 
-import { useAuth } from '@/components/auth/AuthContext';
+import { useAuth } from '@jazzmind/busibox-app';
 
 export function ProtectedComponent() {
   const { authState } = useAuth();
   
-  if (!authState.isAuthenticated) {
+  if (!authState?.isAuthenticated) {
     return <div>Please log in</div>;
   }
   
@@ -243,14 +226,6 @@ npm run test:coverage # Test with coverage
 npm run lint          # Lint code
 ```
 
-### Database (Prisma Mode)
-
-```bash
-npm run db:push       # Push schema to database
-npm run db:generate   # Generate Prisma client
-npm run db:studio     # Open Prisma Studio
-```
-
 ### Busibox App Package
 
 ```bash
@@ -269,10 +244,10 @@ Deploy via Ansible:
 cd /path/to/busibox/provision/ansible
 
 # Production
-make deploy-my-app
+make install SERVICE=my-app
 
 # Staging
-make deploy-my-app INV=inventory/staging
+make install SERVICE=my-app INV=inventory/staging
 ```
 
 ### Standalone Build
@@ -310,7 +285,7 @@ describe('Items API', () => {
 This template is optimized for AI-assisted development:
 
 - **CLAUDE.md** - Comprehensive guidance for Claude Code
-- **.cursor/rules/** - 9 cursor rules for consistent patterns
+- **.cursor/rules/** - Cursor rules for consistent patterns
 - **Typed APIs** - Full TypeScript for better AI understanding
 
 ### Key Rules
@@ -318,7 +293,7 @@ This template is optimized for AI-assisted development:
 - `001-architect.mdc` - Planning and architecture
 - `002-nextjs-patterns.mdc` - Next.js 16 patterns
 - `003-component-org.mdc` - Component organization
-- `004-database.mdc` - Prisma patterns
+- `004-database.mdc` - Data API storage patterns
 - `005-api-routes.mdc` - API route patterns
 - `006-authentication.mdc` - Busibox SSO
 
@@ -342,14 +317,11 @@ rm -rf .next node_modules package-lock.json
 npm install
 ```
 
-### Prisma Issues
+### Data API Issues
 
 ```bash
-# Regenerate client
-npm run db:generate
-
-# Check database connection
-npx prisma db pull
+# Check data-api health
+curl http://localhost:8002/health
 ```
 
 ## Related Projects

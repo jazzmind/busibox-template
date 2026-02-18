@@ -26,8 +26,8 @@ export default function HomePage() {
             Busibox session
           </li>
           <li>
-            <strong>Database CRUD:</strong> Create, read, update, and delete notes
-            using Prisma
+            <strong>Data API CRUD:</strong> Create, read, update, and delete notes
+            via the Busibox data-api
           </li>
           <li>
             <strong>Agent API Calls:</strong> Test Zero Trust token exchange with
