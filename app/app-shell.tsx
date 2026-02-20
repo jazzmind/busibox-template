@@ -12,7 +12,7 @@ function AppShellContent({ children, basePath }: { children: React.ReactNode; ba
   
   // Portal URL - must be configured via NEXT_PUBLIC_BUSIBOX_PORTAL_URL
   // Empty string disables portal links
-  const portalUrl = process.env.NEXT_PUBLIC_BUSIBOX_PORTAL_URL || '';
+  const portalUrl = process.env.NEXT_PUBLIC_BUSIBOX_PORTAL_URL || process.env.NEXT_PUBLIC_AI_PORTAL_URL || '';
   
   // App home link - use "/" since Next.js Link automatically prepends basePath
   // The basePath is configured in next.config.ts
@@ -124,7 +124,7 @@ function AppShellContent({ children, basePath }: { children: React.ReactNode; ba
 }
 
 export function AppShell({ children, basePath }: { children: React.ReactNode; basePath: string }) {
-  const portalUrl = process.env.NEXT_PUBLIC_BUSIBOX_PORTAL_URL || '';
+  const portalUrl = process.env.NEXT_PUBLIC_BUSIBOX_PORTAL_URL || process.env.NEXT_PUBLIC_AI_PORTAL_URL || '';
   const appId = process.env.APP_NAME || 'busibox-template';
   
   return (
