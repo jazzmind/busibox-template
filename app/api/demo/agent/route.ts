@@ -7,14 +7,21 @@
  * Delete this entire file when starting your real app.
  * 
  * See DEMO.md for complete deletion checklist.
+ *
+ * Demonstrates calling the agent-api via token exchange.
+ * For production apps, use the /api/agent/[...path] catch-all proxy
+ * or SimpleChatInterface with the /api/auth/token endpoint instead.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuthWithTokenExchange } from "@/lib/auth-middleware";
 
+const AGENT_API_URL =
+  process.env.AGENT_API_URL || "http://localhost:8000";
+
 /**
  * POST /api/demo/agent
- * Demo endpoint that calls the agent-api to test token exchange and chat
+ * Demo endpoint that calls agent-api to test token exchange
  */
 export async function POST(request: NextRequest) {
   try {
@@ -31,28 +38,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Determine agent API URL
-    // Note: In Docker/production, this is usually http://agent-api:8000 (internal DNS)
-    const agentApiUrl =
-      process.env.DEMO_AGENT_API_URL ||
-      process.env.AGENT_API_URL ||
-      "http://agent-api:8000";
-
     const startTime = Date.now();
 
-    // Call agent-api legacy chat endpoint
-    // The legacy endpoint is at /chat/api/chat (router prefix /chat + endpoint /api/chat)
-    // It expects { message: string, agentId?: string } format
-    const response = await fetch(`${agentApiUrl}/chat/api/chat`, {
-      method: "POST",
+    const response = await fetch(`${AGENT_API_URL}/agents`, {
+      method: "GET",
       headers: {
         Authorization: `Bearer ${auth.apiToken}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        message: message,
-        agentId: "default",
-      }),
     });
 
     const duration = Date.now() - startTime;
@@ -61,22 +54,12 @@ export async function POST(request: NextRequest) {
       const errorText = await response.text();
       console.error("[DEMO] Agent API error:", response.status, errorText);
       
-      // Try to parse error as JSON for better messages
-      let errorMessage = errorText;
-      try {
-        const errorJson = JSON.parse(errorText);
-        errorMessage = errorJson.detail || errorJson.message || errorText;
-      } catch {
-        // Keep original error text
-      }
-      
       return NextResponse.json(
         {
           error: "Agent API call failed",
           status: response.status,
-          message: errorMessage,
+          message: errorText,
           duration,
-          agentApiUrl,
         },
         { status: 502 }
       );
@@ -84,21 +67,14 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json();
 
-    // The legacy endpoint returns { response: string, success: boolean }
-    const assistantMessage = data.response || 
-                            data.choices?.[0]?.message?.content || 
-                            data.message?.content ||
-                            JSON.stringify(data);
-
     return NextResponse.json({
-      success: data.success ?? true,
-      message: `Agent responded to: "${message}"`,
+      success: true,
+      message: `Agent API responded successfully`,
       userMessage: message,
-      agentResponse: assistantMessage,
+      agentResponse: `Agent API is reachable. Found ${Array.isArray(data) ? data.length : 'unknown'} agents.`,
       rawResponse: data,
       duration,
       timestamp: new Date().toISOString(),
-      agentApiUrl,
     });
   } catch (error) {
     console.error("[DEMO] Agent API call failed:", error);

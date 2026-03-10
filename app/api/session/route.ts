@@ -6,21 +6,13 @@ import {
   getUserRolesFromToken, 
   parseJWTPayload, 
   isTokenExpired 
-} from "@jazzmind/busibox-app/lib/auth";
+} from "@jazzmind/busibox-app/lib/authz";
 
-/**
- * Check if a string looks like a UUID
- */
 function isUUID(str: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 }
 
-/**
- * Extract a display-friendly email from various sources
- * If no email found, tries to create a friendly display name from the user ID
- */
 function extractEmail(payload: Record<string, unknown>, userId: string | null): string {
-  // Try various email claims
   const emailCandidates = [
     payload.email,
     payload.preferred_username,
@@ -32,23 +24,13 @@ function extractEmail(payload: Record<string, unknown>, userId: string | null): 
   
   for (const candidate of emailCandidates) {
     if (typeof candidate === 'string' && candidate.length > 0) {
-      // If it looks like an email, use it
-      if (candidate.includes('@')) {
-        return candidate;
-      }
-      // If it's not a UUID, it's probably a username - use it
-      if (!isUUID(candidate)) {
-        return candidate;
-      }
+      if (candidate.includes('@')) return candidate;
+      if (!isUUID(candidate)) return candidate;
     }
   }
   
-  // Fall back to user ID, but if it's a UUID, try to make it more friendly
   if (userId) {
-    if (isUUID(userId)) {
-      // Just use 'User' as a friendly fallback when we only have UUIDs
-      return 'User';
-    }
+    if (isUUID(userId)) return 'User';
     return userId;
   }
   
@@ -59,17 +41,13 @@ function extractEmail(payload: Record<string, unknown>, userId: string | null): 
  * GET /api/session
  *
  * Lightweight session endpoint for UI chrome (navbar/user dropdown).
- * Derives user identity from:
- * 1. app-session cookie (set by SSO flow)
- * 2. JWT token (cookie or Authorization header)
- * 3. TEST_USER env vars (local dev fallback)
+ * Kept for backward compatibility -- the canonical session endpoint is
+ * /api/auth/session which uses createSessionRouteHandlers.
  */
 export async function GET(request: NextRequest) {
   try {
-    // First check for app-session cookie (set by SSO flow)
     const ssoSession = getSessionFromRequest(request);
     if (ssoSession) {
-      // Get a display-friendly email
       const displayEmail = ssoSession.email && ssoSession.email.length > 0 && !isUUID(ssoSession.email)
         ? ssoSession.email
         : 'User';
@@ -92,19 +70,17 @@ export async function GET(request: NextRequest) {
     
     const token = getTokenFromRequest(request);
     
-    // If no token, check for test user (local dev)
     if (!token) {
       const testUserId = process.env.TEST_USER_ID;
       const testUserEmail = process.env.TEST_USER_EMAIL;
       
       if (testUserId && testUserEmail) {
-        console.log('[SESSION] Using test user credentials for local development');
         return NextResponse.json({
           user: {
             id: testUserId,
             email: testUserEmail,
             status: 'ACTIVE',
-            roles: ['Admin', 'User'], // Test user has all roles
+            roles: ['Admin', 'User'],
           },
           isAuthenticated: true,
         });
@@ -113,15 +89,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ user: null, isAuthenticated: false });
     }
 
-    // Check if token is expired
     if (isTokenExpired(token)) {
-      console.warn('[SESSION] Token is expired');
       return NextResponse.json({ user: null, isAuthenticated: false });
     }
 
     const payload = parseJWTPayload(token);
     if (!payload) {
-      console.warn('[SESSION] Failed to parse JWT payload');
       return NextResponse.json({ user: null, isAuthenticated: false });
     }
 
@@ -131,7 +104,6 @@ export async function GET(request: NextRequest) {
       (typeof payload.user_id === 'string' ? payload.user_id : null) || 
       (typeof payload.userId === 'string' ? payload.userId : null);
 
-    // Get a display-friendly email
     const email = extractEmail(payload, userId);
 
     return NextResponse.json({

@@ -40,7 +40,7 @@ Follow these steps to remove all demo features:
 
 ```bash
 # Delete demo page
-rm -rf app/demo/
+rm -rf app/\(authenticated\)/demo/
 
 # Delete demo API routes
 rm -rf app/api/demo/
@@ -51,20 +51,18 @@ rm DEMO.md
 
 ### Step 2: Update Navigation
 
-Edit `app/app-shell.tsx`:
+Edit `app/(authenticated)/layout.tsx`:
 
-Remove the demo link (marked with `{/* DEMO LINK - DELETE WHEN BUILDING REAL APP */}`):
+Remove the demo nav item from the `navItems` array (marked with `// DEMO LINK - DELETE WHEN BUILDING REAL APP`):
 
 ```tsx
 // DELETE THIS:
-<Link href="/demo" className="...">
-  Demo Features
-</Link>
+{ href: '/demo', label: 'Demo Features' },
 ```
 
 ### Step 3: Update Home Page
 
-Edit `app/page.tsx`:
+Edit `app/(authenticated)/page.tsx`:
 
 Remove the demo section (marked with `{/* DEMO SECTION - DELETE WHEN BUILDING REAL APP */}`).
 
@@ -117,7 +115,7 @@ npm run dev
 
 ### Required Deletions
 
-- `app/demo/page.tsx` - Demo UI page
+- `app/(authenticated)/demo/page.tsx` - Demo UI page
 - `app/api/demo/notes/route.ts` - Notes CRUD API
 - `app/api/demo/notes/[id]/route.ts` - Single note operations
 - `app/api/demo/agent/route.ts` - Agent API demo
@@ -126,8 +124,8 @@ npm run dev
 ### Required Modifications
 
 - `busibox.json` - Update app identity
-- `app/app-shell.tsx` - Remove demo nav link
-- `app/page.tsx` - Remove demo section
+- `app/(authenticated)/layout.tsx` - Remove demo nav link
+- `app/(authenticated)/page.tsx` - Remove demo section
 - `README.md` - Remove demo documentation
 
 ## After Deletion
@@ -146,9 +144,30 @@ Now that demo features are removed, you can:
 1. Define your data model in `lib/data-api-client.ts` (schemas and CRUD functions)
 2. Define your types in `lib/types.ts`
 3. Create your API routes in `app/api/`
-4. Build your UI pages in `app/`
-5. Update branding in `app/providers.tsx`
+4. Build your UI pages in `app/(authenticated)/`
+5. Add navigation links in `app/(authenticated)/layout.tsx`
 6. Configure environment in `.env.local`
 7. Deploy to Busibox infrastructure
 
-See `README.md` and `CLAUDE.md` for development guidance.
+## Key API Patterns
+
+### Data API (data-api)
+```typescript
+const auth = await requireAuthWithTokenExchange(request, "data-api");
+const documentIds = await ensureDataDocuments(auth.apiToken);
+const items = await queryRecords(auth.apiToken, documentIds.items, { ... });
+```
+
+### Agent API (agent-api)
+Use the `/api/agent/[...path]` catch-all proxy for direct API calls, or
+`/api/auth/token` to get a token for client-side chat components:
+
+```typescript
+// Client-side: use the proxy
+const res = await fetch('/api/agent/chat/completions', { method: 'POST', ... });
+
+// Client-side: use SimpleChatInterface with token endpoint
+<SimpleChatInterface token={apiToken} agentId="my-agent" />
+```
+
+See `CLAUDE.md` for development guidance.

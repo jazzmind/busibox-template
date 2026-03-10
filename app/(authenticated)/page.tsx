@@ -15,7 +15,7 @@ export default function HomePage() {
       {/* DEMO SECTION - DELETE WHEN BUILDING REAL APP */}
       <div className="mb-12 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-lg p-6">
         <h2 className="text-2xl font-semibold text-blue-900 dark:text-blue-300 mb-4">
-          🎯 Demo Features Available
+          Demo Features Available
         </h2>
         <p className="text-gray-700 dark:text-gray-300 mb-4">
           This template includes working demo features to test your deployment:
@@ -38,10 +38,10 @@ export default function HomePage() {
           href="/demo"
           className="inline-block px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
         >
-          Try Demo Features →
+          Try Demo Features
         </Link>
         <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">
-          ⚠️ Remember to delete all demo features before building your production
+          Remember to delete all demo features before building your production
           app. See{" "}
           <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">DEMO.md</code>{" "}
           for deletion instructions.
@@ -62,23 +62,22 @@ export default function HomePage() {
             with your app name
           </li>
           <li>
-            2. Update{" "}
+            2. Add your routes in the{" "}
             <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">
-              app/providers.tsx
-            </code>{" "}
-            with your branding
-          </li>
-          <li>
-            3. Add your routes in the{" "}
-            <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">
-              app/
+              app/(authenticated)/
             </code>{" "}
             directory
           </li>
           <li>
-            4. Add navigation links in{" "}
+            3. Add navigation links in{" "}
             <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">
-              app/app-shell.tsx
+              app/(authenticated)/layout.tsx
+            </code>
+          </li>
+          <li>
+            4. Define your data model in{" "}
+            <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">
+              lib/data-api-client.ts
             </code>
           </li>
           <li>

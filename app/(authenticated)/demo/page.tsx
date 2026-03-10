@@ -12,7 +12,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useAuth } from "@jazzmind/busibox-app";
+import { useSession } from "@jazzmind/busibox-app/components/auth/SessionProvider";
 import { Trash2, Edit2, Check, X, AlertCircle, CheckCircle } from "lucide-react";
 
 interface DemoNote {
@@ -24,10 +24,7 @@ interface DemoNote {
 }
 
 export default function DemoPage() {
-  const { authState } = useAuth();
-  // During initial render (and during Next.js prerender), authState can be null.
-  // Avoid hard crashes by treating "null" as unauthenticated.
-  const safeAuthState = authState ?? { isAuthenticated: false, user: null };
+  const { user, isAuthenticated } = useSession();
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -55,7 +52,7 @@ export default function DemoPage() {
       </h1>
 
       {/* Section 1: Authentication Info */}
-      <AuthenticationDemo authState={safeAuthState} />
+      <AuthenticationDemo user={user} isAuthenticated={isAuthenticated} />
 
       {/* Section 2: Data API CRUD Demo */}
       <DataAPICRUDDemo />
@@ -70,10 +67,7 @@ export default function DemoPage() {
 // Section 1: Authentication Demo
 // ============================================================================
 
-function AuthenticationDemo({ authState }: { authState: any }) {
-  const isAuthenticated = Boolean(authState?.isAuthenticated);
-  const user = authState?.user ?? null;
-
+function AuthenticationDemo({ user, isAuthenticated }: { user: any; isAuthenticated: boolean }) {
   return (
     <section className="mb-12 bg-white dark:bg-gray-800 rounded-lg shadow p-6">
       <div className="flex items-center justify-between mb-4">
@@ -157,15 +151,12 @@ function DataAPICRUDDemo() {
   const [editTitle, setEditTitle] = useState("");
   const [editContent, setEditContent] = useState("");
 
-  // Create note form state
   const [newTitle, setNewTitle] = useState("");
   const [newContent, setNewContent] = useState("");
   const [creating, setCreating] = useState(false);
 
-  // Get basePath for API calls
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
-  // Load notes on mount
   useEffect(() => {
     loadNotes();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -409,7 +400,6 @@ function AgentAPIDemo() {
   const [response, setResponse] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Get basePath for API calls
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
   const callAgent = async () => {
@@ -418,13 +408,12 @@ function AgentAPIDemo() {
       setError(null);
       setResponse(null);
 
-      // Use basePath-aware URL for fetch
       const apiUrl = `${basePath}/api/demo/agent`;
       const res = await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message }),
-        credentials: "include", // Include cookies for auth
+        credentials: "include",
       });
 
       const data = await res.json();
@@ -454,7 +443,7 @@ function AgentAPIDemo() {
 
       <p className="text-gray-600 dark:text-gray-300 mb-6">
         Tests Zero Trust token exchange and downstream service calls to
-        agent-api.
+        agent-api via the /api/agent proxy.
       </p>
 
       <div className="space-y-4">
@@ -494,7 +483,6 @@ function AgentAPIDemo() {
               </h3>
             </div>
             <div className="space-y-3 text-sm">
-              {/* User message */}
               <div className="bg-blue-100 dark:bg-blue-900/30 rounded p-3">
                 <span className="font-medium text-blue-800 dark:text-blue-300 block mb-1">
                   You:
@@ -504,7 +492,6 @@ function AgentAPIDemo() {
                 </span>
               </div>
               
-              {/* Agent response */}
               <div className="bg-gray-100 dark:bg-gray-800 rounded p-3">
                 <span className="font-medium text-gray-700 dark:text-gray-300 block mb-1">
                   Agent:
@@ -516,20 +503,11 @@ function AgentAPIDemo() {
                 </span>
               </div>
               
-              {/* Technical details (collapsed) */}
               <details className="text-xs">
                 <summary className="cursor-pointer text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
                   Technical Details
                 </summary>
                 <div className="mt-2 space-y-2">
-                  <div>
-                    <span className="font-medium text-gray-600 dark:text-gray-400">
-                      API URL:
-                    </span>{" "}
-                    <span className="font-mono">
-                      {response.agentApiUrl}
-                    </span>
-                  </div>
                   <div>
                     <span className="font-medium text-gray-600 dark:text-gray-400">
                       Raw Response:

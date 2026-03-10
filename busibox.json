@@ -16,5 +16,5 @@
     "NEXT_PUBLIC_DEBUG",
     "DEMO_AGENT_API_URL"
   ],
-  "busiboxAppVersion": "^2.1.17"
+  "busiboxAppVersion": "^3.0.0"
 }
