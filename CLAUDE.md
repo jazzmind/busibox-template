@@ -174,17 +174,74 @@ export async function GET(request: NextRequest) {
 
 ### Agent API (`agent-api`)
 
-**Proxy pattern** -- Use the `/api/agent/[...path]` catch-all proxy. Client code calls `/api/agent/<path>` and the proxy forwards to `AGENT_API_URL/<path>` with proper token exchange. Handles streaming SSE responses.
+**Chat pattern** -- Use the `/api/agent/[...path]` catch-all proxy. Client code calls `/api/agent/<path>` and the proxy forwards to `AGENT_API_URL/<path>` with proper token exchange. Handles streaming SSE responses.
 
 **Token pattern** -- For client-side chat components (e.g., `SimpleChatInterface`), use `/api/auth/token` to get a bearer token:
 
 ```typescript
-// Server-side: proxy route handles auth automatically
-// Client-side: get token for chat components
 const res = await fetch('/api/auth/token');
 const { token } = await res.json();
 <SimpleChatInterface token={token} agentId="my-agent" />
 ```
+
+**Structured output pattern** -- For programmatic tasks that need deterministic JSON (scoring, classification, extraction, summarization), use `POST /runs/invoke` with `response_schema`. This bypasses the chat system and forces schema-validated JSON output with retry.
+
+```typescript
+// In a Next.js API route:
+const auth = await requireAuthWithTokenExchange(request, "agent-api");
+
+const SCORE_SCHEMA = {
+  name: "item_scores",
+  strict: true,
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["scores"],
+    properties: {
+      scores: {
+        type: "array",
+        maxItems: 10,
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["id", "score", "reasoning"],
+          properties: {
+            id: { type: "string" },
+            score: { type: "number" },
+            reasoning: { type: "string" },
+          },
+        },
+      },
+    },
+  },
+};
+
+const res = await fetch(`${AGENT_API_URL}/runs/invoke`, {
+  method: "POST",
+  headers: {
+    Authorization: `Bearer ${auth.apiToken}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    agent_name: "record-extractor",
+    input: { prompt: "Score these items..." },
+    response_schema: SCORE_SCHEMA,
+    agent_tier: "complex",
+  }),
+});
+
+const { output, error } = await res.json();
+// output is validated JSON matching SCORE_SCHEMA.schema
+```
+
+Key rules:
+- Use `agent_name: "record-extractor"` (built-in no-tool agent) or your own custom agent
+- `response_schema` must have `name`, `strict: true`, and `schema` with `additionalProperties: false`
+- Include `required` arrays on all objects and `maxItems` on arrays
+- `agent_tier`: `"simple"` (30s), `"complex"` (5min), `"batch"` (30min)
+- Do NOT use `/llm/completions` (no validation/retry) or `/chat/message` (1000-char limit, conversational)
+
+See `docs/developers/architecture/06-agents.md` in the busibox repo for full documentation.
 
 ### Search API (`search-api`)
 
