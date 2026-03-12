@@ -13,7 +13,8 @@ const portalUrl = portalBaseUrl
   : '/portal';
 
 const adminNavigation: NavigationItem[] = [
-  { href: `${portalUrl}/admin`, label: 'Admin Dashboard' },
+  // "Admin Dashboard" link is built into the Header automatically.
+  // Add extra admin-only items here if needed.
 ];
 
 const navItems = [
