@@ -97,6 +97,7 @@ busibox-template/
 │   ├── auth-middleware.ts      # requireAuthWithTokenExchange, optionalAuth
 │   ├── authz-client.ts         # Zero Trust token exchange client
 │   ├── data-api-client.ts      # Data-api schemas and CRUD (demo notes)
+│   ├── sharing.ts              # Document sharing (team, visibility)
 │   ├── api-client.ts           # Generic API client
 │   └── types.ts                # Shared types
 ├── busibox.json                # App manifest
@@ -339,6 +340,95 @@ const items = await queryRecords(token, documentIds.items, { ... });
 await insertRecords(token, documentIds.items, [newItem]);
 ```
 
+## Document Sharing
+
+Busibox apps support three document visibility modes, managed via authz self-service roles and data-api document roles.
+
+### Visibility Modes
+
+| Mode | data-api `visibility` | Access |
+|---|---|---|
+| **Private** | `personal` | Only the document owner |
+| **Shared** | `authenticated` | Any authenticated user in the app |
+| **Team** | `shared` + role(s) | Only users with the matching role in their JWT |
+
+### Two Sharing Patterns
+
+**App-level sharing** (one team for the whole app, e.g. workforce):
+```typescript
+const role = await ensureTeamRole(ssoToken, 'my-app', 'data');
+// Creates role: app:my-app:data-team
+```
+
+**Entity-level sharing** (one team per entity, e.g. per campaign):
+```typescript
+const role = await ensureTeamRole(ssoToken, 'my-app', `project-${slug}`);
+// Creates role: app:my-app:project-{slug}-team
+```
+
+### Token Types
+
+Sharing requires two different tokens:
+- **SSO token** (`busibox-session` cookie): For authz self-service endpoints (role CRUD, member management, user search). Get with `getSSOTokenFromRequest(request)`.
+- **Data-api token** (from `requireAuthWithTokenExchange(request, 'data-api')`): For document role management.
+
+### Sharing API (from `@jazzmind/busibox-app/lib/data/sharing`)
+
+```typescript
+import {
+  ensureTeamRole,         // Create/find a team role (idempotent)
+  addRoleToDocuments,     // Add role to data documents (idempotent)
+  addRoleToLibrary,       // Add role to a data library (idempotent)
+  listTeamMembers,        // List members of a team role
+  addTeamMember,          // Add a user to a team role
+  removeTeamMember,       // Remove a user from a team role
+  searchUsers,            // Search users by email/name
+  setDocumentVisibility,  // Switch documents between modes
+  resolveVisibilityMode,  // Determine current mode from roles info
+  getSSOTokenFromRequest, // Extract SSO token from request cookies
+  type VisibilityMode,    // 'private' | 'shared' | 'team'
+  type TeamMember,
+  type TeamRole,
+} from '@jazzmind/busibox-app/lib/data/sharing';
+```
+
+### Reference API Routes
+
+| Route | Method | Purpose |
+|---|---|---|
+| `/api/settings/visibility` | GET | Get current visibility mode, role, members |
+| `/api/settings/visibility` | POST | Change visibility mode (body: `{ mode }`) |
+| `/api/team` | GET | List team members |
+| `/api/team` | POST | Add team member (body: `{ userId }`) |
+| `/api/team` | DELETE | Remove team member (body: `{ userId }`) |
+| `/api/users/search` | GET | Search users (query: `?q=...`) |
+
+### Example: Adding Team Sharing to an App
+
+```typescript
+// 1. In your API route, get both tokens
+const auth = await requireAuthWithTokenExchange(request, 'data-api');
+if (auth instanceof NextResponse) return auth;
+const ssoToken = getSSOTokenFromRequest(request);
+
+// 2. Create/find the team role
+const role = await ensureTeamRole(ssoToken, 'my-app', 'data');
+
+// 3. Add role to all documents that should be shared
+const ids = await ensureDataDocuments(auth.apiToken);
+await addRoleToDocuments(auth.apiToken, role.roleId, Object.values(ids));
+
+// 4. Switch to team visibility
+await setDocumentVisibility(auth.apiToken, Object.values(ids), 'team', role.roleId);
+
+// 5. Add a team member
+await addTeamMember(ssoToken, role.roleId, userId);
+```
+
+### Important: When Adding Team Members
+
+When a user is added to a team, ensure the team role is added to ALL documents and libraries that the team should access. This is critical because data-api uses PostgreSQL Row-Level Security (RLS) — if a document doesn't have the role in its `document_roles`, team members won't see it.
+
 ## Environment Variables
 
 ### Required
@@ -418,6 +508,13 @@ import { ensureDocuments, queryRecords, insertRecords } from "@jazzmind/busibox-
 
 // Token exchange
 import { exchangeTokenZeroTrust, getAuthHeaderZeroTrust } from "@jazzmind/busibox-app";
+
+// Document Sharing
+import {
+  ensureTeamRole, addRoleToDocuments, addRoleToLibrary,
+  listTeamMembers, addTeamMember, removeTeamMember,
+  searchUsers, setDocumentVisibility, getSSOTokenFromRequest,
+} from "@jazzmind/busibox-app/lib/data/sharing";
 ```
 
 **Note**: The correct import path for auth utilities is `@jazzmind/busibox-app/lib/authz` (NOT `lib/auth`).
