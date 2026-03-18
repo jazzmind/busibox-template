@@ -66,9 +66,9 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const mode = body.mode as VisibilityMode;
-    if (!["private", "shared", "team"].includes(mode)) {
+    if (!["private", "personal", "shared", "team"].includes(mode)) {
       return NextResponse.json(
-        { error: "Invalid mode. Must be 'private', 'shared', or 'team'" },
+        { error: "Invalid mode. Must be 'private', 'personal', 'shared', or 'team'" },
         { status: 400 },
       );
     }
