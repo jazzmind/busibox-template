@@ -329,7 +329,7 @@ export const itemSchema: AppDataSchema = {
   },
   displayName: 'Items',
   sourceApp: 'my-app',
-  visibility: 'personal',
+  visibility: 'authenticated',
 };
 
 // 2. Ensure documents exist

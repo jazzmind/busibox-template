@@ -50,7 +50,7 @@ export const itemSchema: AppDataSchema = {
   displayName: 'Items',
   itemLabel: 'Item',
   sourceApp: 'my-app',
-  visibility: 'personal',
+  visibility: 'authenticated',
   allowSharing: false,
   graphNode: '',
   graphRelationships: [],
@@ -59,10 +59,13 @@ export const itemSchema: AppDataSchema = {
 
 ### Ensure Documents Before CRUD
 
+Documents use `visibility: 'authenticated'` so one container exists for all app users.
+Per-record access control is handled at the record level (via `data_records` table RLS).
+
 ```typescript
 export async function ensureDataDocuments(token: string) {
   return ensureDocuments(token, {
-    items: { name: DOCUMENTS.ITEMS, schema: itemSchema, visibility: 'personal' },
+    items: { name: DOCUMENTS.ITEMS, schema: itemSchema, visibility: 'authenticated' },
   }, 'my-app');
 }
 ```

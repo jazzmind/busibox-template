@@ -42,7 +42,7 @@ export const noteSchema: AppDataSchema = {
   displayName: 'Notes',
   itemLabel: 'Note',
   sourceApp: 'busibox-template',
-  visibility: 'personal',
+  visibility: 'authenticated',
   allowSharing: false,
   graphNode: '',
   graphRelationships: [],
@@ -61,7 +61,7 @@ export async function ensureDataDocuments(token: string): Promise<{
       notes: {
         name: DOCUMENTS.NOTES,
         schema: noteSchema,
-        visibility: 'personal',
+        visibility: 'authenticated',
       },
     },
     'busibox-template'
