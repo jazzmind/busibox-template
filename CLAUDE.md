@@ -469,10 +469,14 @@ NEXT_PUBLIC_PORTAL_BASE_PATH=/portal
 
 ### Adding Agents
 
-1. Create agent definitions (see recruiter's `lib/recruiter-agents.ts` for example)
-2. Create a seed script in `scripts/seed-agents.ts`
-3. Run with `npx tsx scripts/seed-agents.ts`
-4. Use `SimpleChatInterface` from `@jazzmind/busibox-app` for chat UI
+Agents use **generic core tools** (query_data, aggregate_data, get_facets, document_search, etc.) and app-specific **system prompts** to customize behavior. No custom tool code is needed in the agent service.
+
+1. Define agents in `lib/*-agents.ts` -- specify tool names (from the core registry) and instructions that teach the LLM your data schema field names
+2. Create `lib/sync.ts` to sync definitions to agent-api via `POST /agents/definitions`
+3. Wire sync into `app/api/setup/route.ts` (auto-sync on first load) and `app/api/settings/sync/route.ts` (manual trigger)
+4. Use `SimpleChatInterface` from `@jazzmind/busibox-app` for chat UI, passing `metadata` with document IDs
+
+See the demo files (`lib/demo-agents.ts`, `lib/sync.ts`) for a working example.
 
 ## Busibox Integration
 
@@ -515,6 +519,10 @@ import {
   listTeamMembers, addTeamMember, removeTeamMember,
   searchUsers, setDocumentVisibility, getSSOTokenFromRequest,
 } from "@jazzmind/busibox-app/lib/data/sharing";
+
+// Agent sync helpers
+import { syncAgentDefinitions, getAgentSyncStatus } from "@jazzmind/busibox-app/lib/agent/sync";
+import type { AgentDefinitionInput, AgentSyncResult, SyncStatus } from "@jazzmind/busibox-app/lib/agent";
 ```
 
 **Note**: The correct import path for auth utilities is `@jazzmind/busibox-app/lib/authz` (NOT `lib/auth`).

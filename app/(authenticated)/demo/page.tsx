@@ -391,50 +391,49 @@ function DataAPICRUDDemo() {
 }
 
 // ============================================================================
-// Section 3: Agent API Demo
+// Section 3: Agent Chat Demo
 // ============================================================================
 
 function AgentAPIDemo() {
-  const [message, setMessage] = useState("Hello from demo app!");
-  const [loading, setLoading] = useState(false);
-  const [response, setResponse] = useState<any>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [notesDocumentId, setNotesDocumentId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
-  const callAgent = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      setResponse(null);
+  useEffect(() => {
+    async function init() {
+      try {
+        const [tokenRes, setupRes] = await Promise.all([
+          fetch(`${basePath}/api/auth/token`, { credentials: "include" }),
+          fetch(`${basePath}/api/setup`, { credentials: "include" }),
+        ]);
 
-      const apiUrl = `${basePath}/api/demo/agent`;
-      const res = await fetch(apiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message }),
-        credentials: "include",
-      });
+        if (tokenRes.ok) {
+          const { token: t } = await tokenRes.json();
+          setToken(t);
+        }
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || "Failed to call agent API");
+        if (setupRes.ok) {
+          const data = await setupRes.json();
+          setNotesDocumentId(data.documents?.notes?.id || null);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to initialize");
+      } finally {
+        setLoading(false);
       }
-
-      setResponse(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to call agent API");
-    } finally {
-      setLoading(false);
     }
-  };
+    init();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <section className="mb-12 bg-white dark:bg-gray-800 rounded-lg shadow p-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
-          3. Agent API Call
+          3. AI Chat Assistant
         </h2>
         <span className="text-xs text-gray-500 dark:text-gray-400">
           DEMO - DELETE THIS SECTION
@@ -442,86 +441,60 @@ function AgentAPIDemo() {
       </div>
 
       <p className="text-gray-600 dark:text-gray-300 mb-6">
-        Tests Zero Trust token exchange and downstream service calls to
-        agent-api via the /api/agent proxy.
+        A working AI assistant that uses generic core tools (query_data,
+        aggregate_data, get_facets, document_search) to answer questions about
+        your notes. The agent&apos;s system prompt teaches it your data schema.
       </p>
 
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Test Message
-          </label>
-          <input
-            type="text"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-            placeholder="Enter a message"
-          />
+      {loading && (
+        <p className="text-gray-600 dark:text-gray-400">Loading chat...</p>
+      )}
+
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-4 mb-4">
+          <p className="text-sm text-red-800 dark:text-red-300">{error}</p>
         </div>
+      )}
 
-        <button
-          onClick={callAgent}
-          disabled={loading || !message.trim()}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? "Calling Agent..." : "Call Agent API"}
-        </button>
+      {!loading && token && (
+        <div className="h-[500px] border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+          <DemoChatInterface token={token} notesDocumentId={notesDocumentId} basePath={basePath} />
+        </div>
+      )}
 
-        {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-4">
-            <p className="text-sm text-red-800 dark:text-red-300">{error}</p>
-          </div>
-        )}
-
-        {response && (
-          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
-              <h3 className="text-sm font-medium text-green-800 dark:text-green-300">
-                Success! ({response.duration}ms)
-              </h3>
-            </div>
-            <div className="space-y-3 text-sm">
-              <div className="bg-blue-100 dark:bg-blue-900/30 rounded p-3">
-                <span className="font-medium text-blue-800 dark:text-blue-300 block mb-1">
-                  You:
-                </span>
-                <span className="text-gray-900 dark:text-white">
-                  {response.userMessage || message}
-                </span>
-              </div>
-              
-              <div className="bg-gray-100 dark:bg-gray-800 rounded p-3">
-                <span className="font-medium text-gray-700 dark:text-gray-300 block mb-1">
-                  Agent:
-                </span>
-                <span className="text-gray-900 dark:text-white whitespace-pre-wrap">
-                  {typeof response.agentResponse === 'string' 
-                    ? response.agentResponse 
-                    : JSON.stringify(response.agentResponse, null, 2)}
-                </span>
-              </div>
-              
-              <details className="text-xs">
-                <summary className="cursor-pointer text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
-                  Technical Details
-                </summary>
-                <div className="mt-2 space-y-2">
-                  <div>
-                    <span className="font-medium text-gray-600 dark:text-gray-400">
-                      Raw Response:
-                    </span>
-                    <pre className="mt-1 bg-gray-900 dark:bg-black text-gray-100 p-2 rounded overflow-x-auto">
-                      {JSON.stringify(response.rawResponse, null, 2)}
-                    </pre>
-                  </div>
-                </div>
-              </details>
-            </div>
-          </div>
-        )}
-      </div>
+      {!loading && !token && !error && (
+        <p className="text-gray-600 dark:text-gray-400">
+          Could not obtain agent API token. Make sure the agent-api service is
+          running and accessible.
+        </p>
+      )}
     </section>
   );
+}
+
+function DemoChatInterface({ token, notesDocumentId, basePath }: {
+  token: string;
+  notesDocumentId: string | null;
+  basePath: string;
+}) {
+  try {
+    const ChatInterface = require("@jazzmind/busibox-app/components/chat/SimpleChatInterface").SimpleChatInterface;
+    return (
+      <ChatInterface
+        token={token}
+        agentId="notes-assistant"
+        placeholder="Ask about your notes..."
+        enableDocSearch={true}
+        useAgenticStreaming={true}
+        metadata={notesDocumentId ? { notesDocumentId } : undefined}
+        basePath={basePath}
+      />
+    );
+  } catch {
+    return (
+      <div className="p-4 text-gray-600 dark:text-gray-400">
+        <p>SimpleChatInterface not available. Make sure @jazzmind/busibox-app is installed.</p>
+      </div>
+    );
+  }
 }
