@@ -45,7 +45,8 @@ function getAuthzBaseUrl(): string {
 export async function exchangeForAuthzToken(
   sessionJwt: string,
   audience: AuthzAudience,
-  scopes?: string[]
+  scopes?: string[],
+  resourceId?: string | null
 ): Promise<AuthzTokenResponse> {
   const appName = process.env.APP_NAME || "busibox-app";
 
@@ -55,6 +56,7 @@ export async function exchangeForAuthzToken(
       audience,
       scopes,
       purpose: appName,
+      resourceId: resourceId || undefined,
     },
     {
       authzBaseUrl: getAuthzBaseUrl(),
@@ -81,9 +83,10 @@ export async function exchangeForAuthzToken(
 export async function getApiToken(
   sessionJwt: string,
   audience: AuthzAudience,
-  scopes?: string[]
+  scopes?: string[],
+  resourceId?: string | null
 ): Promise<string> {
-  const result = await exchangeForAuthzToken(sessionJwt, audience, scopes);
+  const result = await exchangeForAuthzToken(sessionJwt, audience, scopes, resourceId);
   return result.accessToken;
 }
 

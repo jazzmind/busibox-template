@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getTokenFromRequest } from "@jazzmind/busibox-app/lib/authz";
+import { decodeJwt } from "jose";
 import { getApiToken } from "./authz-client";
 
 // Default audience for API calls - override in your app
@@ -44,6 +45,11 @@ export async function requireAuthWithTokenExchange(
     const ssoToken = getTokenFromRequest(request);
     const targetAudience = audience || DEFAULT_AUDIENCE;
 
+    // Extract app_id from the SSO token so downstream exchanges are app-scoped.
+    // This ensures the data-api token contains only app-bound roles (e.g.
+    // app:my-app) instead of every role the user possesses.
+    const resourceId = getAppResourceId(request);
+
     // If no SSO token, check for test session JWT (local dev only)
     if (!ssoToken) {
       const testSessionJwt = process.env.TEST_SESSION_JWT;
@@ -54,7 +60,7 @@ export async function requireAuthWithTokenExchange(
         );
 
         // Use the test session JWT for Zero Trust exchange
-        const apiToken = await getApiToken(testSessionJwt, targetAudience, scopes);
+        const apiToken = await getApiToken(testSessionJwt, targetAudience, scopes, resourceId);
 
         return {
           ssoToken: testSessionJwt,
@@ -74,7 +80,7 @@ export async function requireAuthWithTokenExchange(
     }
 
     // Exchange SSO token (session JWT) for API token using Zero Trust
-    const apiToken = await getApiToken(ssoToken, targetAudience, scopes);
+    const apiToken = await getApiToken(ssoToken, targetAudience, scopes, resourceId);
 
     return {
       ssoToken,
@@ -100,6 +106,24 @@ export async function requireAuthWithTokenExchange(
 }
 
 /**
+ * Extract the app_id (app UUID) from the request's SSO token.
+ *
+ * The app-scoped JWT contains an `app_id` claim set during the portal-to-app
+ * token exchange. This UUID identifies the app in authz role bindings and is
+ * needed when creating team role bindings to the app.
+ */
+export function getAppResourceId(request: NextRequest): string | null {
+  try {
+    const token = getTokenFromRequest(request);
+    if (!token) return null;
+    const payload = decodeJwt(token);
+    return (payload.app_id as string) || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Optional authentication - returns tokens if available, null if not
  *
  * Use this for endpoints that work with or without authentication.
@@ -117,13 +141,14 @@ export async function optionalAuth(
   try {
     const ssoToken = getTokenFromRequest(request);
     const targetAudience = audience || DEFAULT_AUDIENCE;
+    const resourceId = getAppResourceId(request);
 
     // Try test session JWT if no SSO token
     if (!ssoToken) {
       const testSessionJwt = process.env.TEST_SESSION_JWT;
 
       if (testSessionJwt) {
-        const apiToken = await getApiToken(testSessionJwt, targetAudience, scopes);
+        const apiToken = await getApiToken(testSessionJwt, targetAudience, scopes, resourceId);
         return {
           ssoToken: testSessionJwt,
           apiToken,
@@ -135,7 +160,7 @@ export async function optionalAuth(
     }
 
     // Exchange SSO token for API token using Zero Trust
-    const apiToken = await getApiToken(ssoToken, targetAudience, scopes);
+    const apiToken = await getApiToken(ssoToken, targetAudience, scopes, resourceId);
 
     return {
       ssoToken,
