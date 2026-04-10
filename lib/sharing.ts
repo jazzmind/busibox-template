@@ -14,7 +14,6 @@
  * Delete or modify this file when building your real app.
  */
 
-import { extractRoleIdsFromToken } from "@jazzmind/busibox-app";
 import {
   ensureTeamRole,
   addRoleToDocuments,
@@ -100,17 +99,13 @@ export async function setVisibility(
   mode: VisibilityMode,
   entityName: string = "data",
 ): Promise<{ mode: VisibilityMode; roleId: string | null }> {
-  const callerRoleIds = extractRoleIdsFromToken(dataToken);
-
   if (mode === "team") {
     const role = await ensureAppTeamRole(ssoToken, entityName);
-    await addRoleToDocuments(dataToken, role.roleId, documentIds);
     await setDocumentVisibility(
       dataToken,
       documentIds,
       "team",
       role.roleId,
-      callerRoleIds,
     );
     return { mode, roleId: role.roleId };
   }
